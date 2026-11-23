@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#edeae6" />
+    <meta
+      name="description"
+      content="Buat pratinjau slab marmer dari foto sendiri. Sesuaikan ukuran fisik, finishing, dan simpan hasilnya sebagai PNG."
+    />
+    <title>Buat ilustrasi slab lebih mudah hehe</title>
+    <link rel="stylesheet" href="./vendor/bootstrap.min.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#studio">Lewati ke editor</a>
+    <header class="site-header">
+      <div class="container-fluid site-width header-content">
+        <a
+          class="brand-link"
+          id="brandLink"
+          href="./"
+          aria-label="Halaman Studio Slab"
+        >
+          <strong>Studio Slab</strong>
+        </a>
+      </div>
+    </header>
+
+    <main id="studio" class="container-fluid site-width workspace-main">
+      <!-- FASE 1: UPLOAD VIEW (Muncul pertama kali sebelum foto dipilih) -->
+      <section id="uploadView" class="upload-view">
+        <div class="upload-hero">
+          <h1>Buat ilustrasi slab</h1>
+          <p>
+            Tinggal upload foto slab yang polos, atur ukurannya kalau tau, pilih
+            finishingnya mau apa, selesai deh
+          </p>
+        </div>
+
+        <div class="card upload-hero-card">
+          <input
+            id="imageInput"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/avif"
+            hidden
+          />
+          <button
+            id="dropZone"
+            type="button"
+            class="upload-control upload-hero-control"
+            aria-label="Pilih foto slab atau letakkan file gambar di sini"
+          >
+            <span
+              id="uploadMark"
+              class="upload-mark hero-mark"
+              aria-hidden="true"
+            >
+              <svg
+                class="dropzone-icon"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </span>
+            <div class="upload-text hero-text">
+              <strong id="fileName">Tarik & lepas foto slab ke sini</strong>
+              <span id="uploadHint">JPG, PNG, WEBP, AVIF hingga 40 MB</span>
+              <span class="upload-badge hero-badge" id="uploadAction"
+                >Pilih foto slab</span
+              >
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <!-- FASE 2: EDITOR VIEW (Muncul setelah foto diunggah) -->
+      <div id="editorView" class="editor-view" hidden>
+        <div class="editor-top-bar">
+          <div class="editor-file-info">
+            <img
+              id="uploadThumb"
+              width="48"
+              height="40"
+              alt="Foto slab yang dipilih"
+            />
+            <div class="editor-file-details">
+              <strong id="editorFileName">Foto slab</strong>
+              <span id="editorFileMeta">Siap disesuaikan</span>
+            </div>
+          </div>
+          <div class="editor-actions">
+            <button
+              type="button"
+              id="createAgainBtn"
+              class="btn btn-outline-secondary create-again-btn"
+              title="Kembali ke halaman upload untuk memilih foto baru"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                <path d="M3 21v-5h5" />
+              </svg>
+              Buat lagi?
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-layout">
+          <!-- Kolom Pengaturan di Kiri -->
+          <aside class="settings-column" aria-labelledby="settingsTitle">
+            <div class="card settings-card">
+              <div class="card-header settings-header">
+                <div>
+                  <h2 id="settingsTitle">Pengaturan slab</h2>
+                </div>
+                <button
+                  type="button"
+                  id="resetBtn"
+                  class="btn btn-outline-secondary btn-sm"
+                  title="Atur ulang pengaturan tanpa menghapus foto"
+                >
+                  Reset
+                </button>
+              </div>
+              <div class="card-body settings-body">
+                <section class="settings-section" aria-labelledby="sizeTitle">
+                  <h3 id="sizeTitle">Dimensi fisik</h3>
+                  <div class="row g-2">
+                    <div class="col-6">
+                      <label for="widthInput" class="form-label">Lebar</label>
+                      <div class="input-group">
+                        <input
+                          type="number"
+                          class="form-control"
+                          id="widthInput"
+                          min="10"
+                          max="6000"
+                          step="0.1"
+                          inputmode="decimal"
+                          placeholder="Cth. 300"
+                          aria-describedby="sizeHelp"
+                        />
+                        <span class="input-group-text">cm</span>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <label for="heightInput" class="form-label">Tinggi</label>
+                      <div class="input-group">
+                        <input
+                          type="number"
+                          class="form-control"
+                          id="heightInput"
+                          min="10"
+                          max="6000"
+                          step="0.1"
+                          inputmode="decimal"
+                          placeholder="Cth. 160"
+                          aria-describedby="sizeHelp"
+                        />
+                        <span class="input-group-text">cm</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="form-text" id="sizeHelp">
+                    Opsional. Isi jika tahu ukuran asli slab. Jika kosong,
+                    pratinjau mengikuti rasio foto.
+                  </p>
+                  <div class="ratio-line">
+                    <span>Rasio fisik</span>
+                    <span
+                      ><strong id="ratioText">Belum diisi</strong>
+                      <span id="ratioType" class="ratio-orientation"></span
+                    ></span>
+                  </div>
+                  <div
+                    id="ratioNotice"
+                    class="alert alert-warning ratio-alert"
+                    role="status"
+                    hidden
+                  >
+                    <strong>Rasio foto berbeda.</strong>
+                    <span id="ratioNoticeText"></span>
+                  </div>
+                </section>
+                <section class="settings-section" aria-labelledby="finishTitle">
+                  <h3 id="finishTitle">Finishing permukaan</h3>
+                  <div
+                    class="finish-options"
+                    role="radiogroup"
+                    aria-label="Jenis finishing marmer"
+                  >
+                    <button
+                      type="button"
+                      class="finish-card active"
+                      data-finish="glossy"
+                      role="radio"
+                      aria-checked="true"
+                    >
+                      <span class="finish-name">Glossy</span
+                      ><span class="finish-description">Kilap tinggi</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="finish-card"
+                      data-finish="polished"
+                      role="radio"
+                      aria-checked="false"
+                    >
+                      <span class="finish-name">Polished</span
+                      ><span class="finish-description">Kilap halus</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="finish-card"
+                      data-finish="honed"
+                      role="radio"
+                      aria-checked="false"
+                    >
+                      <span class="finish-name">Honed</span
+                      ><span class="finish-description">Matte</span>
+                    </button>
+                  </div>
+                  <div class="range-label-row">
+                    <label for="shineInput" class="form-label mb-0"
+                      >Intensitas pantulan</label
+                    >
+                    <output id="shineValue" for="shineInput">70%</output>
+                  </div>
+                  <input
+                    type="range"
+                    class="form-range"
+                    id="shineInput"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value="70"
+                  />
+                  <p class="form-text mb-0">
+                    Finishing adalah simulasi pantulan, bukan perubahan pada
+                    tekstur foto.
+                  </p>
+                </section>
+                <section
+                  class="settings-section last-section"
+                  aria-labelledby="adjustmentTitle"
+                >
+                  <h3 id="adjustmentTitle">Penyesuaian foto</h3>
+                  <div
+                    class="crop-options"
+                    role="radiogroup"
+                    aria-label="Cara foto menyesuaikan ukuran slab"
+                  >
+                    <button
+                      type="button"
+                      class="crop-option active"
+                      data-mode="cover"
+                      role="radio"
+                      aria-checked="true"
+                    >
+                      <strong class="crop-option-name">Isi bidang</strong>
+                      <span class="crop-option-desc">Tepi bisa terpotong</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="crop-option"
+                      data-mode="contain"
+                      role="radio"
+                      aria-checked="false"
+                    >
+                      <strong class="crop-option-name">Seluruh foto</strong>
+                      <span class="crop-option-desc">Tanpa memotong</span>
+                    </button>
+                  </div>
+                  <div class="crop-position" id="cropPosition">
+                    <div class="range-label-row">
+                      <label for="positionInput" class="form-label mb-0"
+                        >Posisi foto</label
+                      >
+                      <button
+                        type="button"
+                        class="text-action"
+                        id="centerCropBtn"
+                      >
+                        Ke tengah
+                      </button>
+                    </div>
+                    <input
+                      type="range"
+                      class="form-range"
+                      id="positionInput"
+                      min="-100"
+                      max="100"
+                      step="1"
+                      value="0"
+                    />
+                    <div class="range-endpoints">
+                      <span id="positionStart">Kiri</span
+                      ><span id="positionEnd">Kanan</span>
+                    </div>
+                  </div>
+                  <div class="shadow-toggle-row">
+                    <div class="form-check form-switch mb-3">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="shadowInput"
+                        checked
+                      />
+                      <label class="form-check-label" for="shadowInput">
+                        Bayangan dudukan (bawah)
+                      </label>
+                      <p class="form-text mb-0 mt-1">
+                        Memberi kontak alami agar slab menapak kokoh di tatakan
+                        dan tidak tampak melayang.
+                      </p>
+                    </div>
+                    <div
+                      class="form-check form-switch mb-0 pt-2 border-top-subtle"
+                    >
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        id="outlineInput"
+                      />
+                      <label class="form-check-label" for="outlineInput">
+                        Garis bingkai fisik (outline 3D)
+                      </label>
+                      <p class="form-text mb-0 mt-1">
+                        Nonaktifkan jika tepi marmer pecah-pecah atau tidak rata
+                        agar tidak terpotong garis kotak buatan.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Kolom Pratinjau di Kanan -->
+          <section class="preview-column" aria-labelledby="previewTitle">
+            <div class="card preview-card" id="previewTitle">
+              <div class="card-header preview-header">
+                <strong id="previewName">BELUM ADA FOTO</strong>
+              </div>
+              <div class="canvas-surface">
+                <canvas
+                  id="slabCanvas"
+                  width="1448"
+                  height="1086"
+                  aria-label="Pratinjau slab marmer di atas tatakan studio"
+                  >Browser ini tidak mendukung Canvas.</canvas
+                >
+                <div class="canvas-message" id="canvasLoading" role="status">
+                  Menyiapkan studio...
+                </div>
+                <div class="canvas-overlay" id="emptyState" hidden>
+                  <div
+                    class="state-content canvas-dropzone"
+                    id="canvasDropZone"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Tarik & lepas foto slab ke sini atau klik untuk memilih file"
+                  >
+                    <span class="dropzone-mark" aria-hidden="true">
+                      <svg
+                        width="26"
+                        height="26"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </span>
+                    <h3>Tarik & lepas foto slab</h3>
+                    <p>Letakkan file gambar di sini atau klik untuk memilih</p>
+                    <button
+                      type="button"
+                      class="btn btn-primary"
+                      id="emptyUploadBtn"
+                    >
+                      Pilih foto slab
+                    </button>
+                  </div>
+                </div>
+                <div class="canvas-overlay" id="errorState" hidden>
+                  <div class="state-content">
+                    <h3>Foto tidak bisa dibuka</h3>
+                    <p id="errorText">
+                      Periksa format foto, lalu pilih file lain.
+                    </p>
+                    <button type="button" class="btn btn-primary" id="retryBtn">
+                      Pilih foto lain
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer preview-footer">
+                <div>
+                  <span id="previewDimensions">Ukuran belum diisi</span
+                  ><span class="footer-divider"></span
+                  ><span id="previewFinish">GLOSSY FINISH</span>
+                </div>
+                <span id="previewAspect">Rasio foto belum tersedia</span>
+              </div>
+            </div>
+            <div class="export-toolbar">
+              <div class="export-description">
+                <strong>Simpan hasil</strong>
+              </div>
+              <div class="export-controls">
+                <label class="visually-hidden" for="resolutionInput"
+                  >Resolusi ekspor</label
+                >
+                <select
+                  id="resolutionInput"
+                  class="form-select"
+                  aria-label="Resolusi ekspor PNG"
+                >
+                  <option value="1">1448 × 1086 px</option>
+                  <option value="2" selected>2896 × 2172 px</option>
+                  <option value="3">4344 × 3258 px</option>
+                </select>
+                <button
+                  id="downloadBtn"
+                  type="button"
+                  class="btn btn-primary"
+                  disabled
+                >
+                  Download gambar (dalam .PNG)
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+    <button
+      id="scrollTopBtn"
+      type="button"
+      class="scroll-top-btn"
+      aria-label="Kembali ke atas"
+      title="Kembali ke atas"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <polyline points="18 15 12 9 6 15" />
+      </svg>
+    </button>
+    <footer class="site-footer">
+      <div class="container-fluid site-width">&copy; 2026 D</div>
+    </footer>
+    <div
+      class="toast-message"
+      id="toast"
+      role="status"
+      aria-live="polite"
+    ></div>
+  </body>
+</html>
