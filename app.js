@@ -40,6 +40,18 @@
     outline: document.getElementById("outlineInput"),
     brandLink: document.getElementById("brandLink"),
     uploadView: document.getElementById("uploadView"),
+    cropView: document.getElementById("cropView"),
+    cropStageContainer: document.getElementById("cropStageContainer"),
+    cropStage: document.getElementById("cropStage"),
+    cropCanvas: document.getElementById("cropCanvas"),
+    cropBox: document.getElementById("cropBox"),
+    cropDimensionsBadge: document.getElementById("cropDimensionsBadge"),
+    cropRotateBtn: document.getElementById("cropRotateBtn"),
+    cropResetBtn: document.getElementById("cropResetBtn"),
+    cropChangePhotoBtn: document.getElementById("cropChangePhotoBtn"),
+    skipCropBtn: document.getElementById("skipCropBtn"),
+    applyCropBtn: document.getElementById("applyCropBtn"),
+    recropBtn: document.getElementById("recropBtn"),
     editorView: document.getElementById("editorView"),
     createAgainBtn: document.getElementById("createAgainBtn"),
     editorFileName: document.getElementById("editorFileName"),
@@ -53,6 +65,10 @@
     width: null,
     height: null,
     name: "Belum ada foto",
+    fileName: "",
+    rawImage: null,
+    cropRotation: 0,
+    cropBox: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 },
     finish: "glossy",
     shine: 70,
     mode: "cover",
@@ -154,58 +170,60 @@
     if (state.finish === "honed" || state.shine === 0) return;
     const s = slab;
     const strength = state.shine / 100;
-    const amount = (state.finish === "glossy" ? 1 : 0.42) * strength;
+    const isGlossy = state.finish === "glossy";
+    const amount = (isGlossy ? 1.0 : 0.58) * strength;
 
-    // A simulated reflection. The photograph's stone pixels are never recolored,
-    // stretched, rotated, or regenerated; this draws light over the source.
-    const broad = ctx.createLinearGradient(
-      s.x + s.w * 0.48,
-      0,
-      s.x + s.w * 0.97,
-      0,
-    );
-    broad.addColorStop(0, "rgba(255,255,255,0)");
-    broad.addColorStop(0.35, `rgba(247,252,253,${0.036 * amount})`);
-    broad.addColorStop(0.66, `rgba(255,255,255,${0.105 * amount})`);
-    broad.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = broad;
-    ctx.fillRect(s.x + s.w * 0.48, s.y, s.w * 0.52, s.h);
-
-    // Softly defined studio light on the upper-right area.
-    const centerX = s.x + s.w * 0.86;
-    const centerY = s.y + s.h * 0.29;
-    const radius = Math.max(30, s.w * 0.21);
     ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.scale(1, 0.34);
-    const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-    glow.addColorStop(0, `rgba(255,255,255,${0.3 * amount})`);
-    glow.addColorStop(0.35, `rgba(255,255,255,${0.12 * amount})`);
-    glow.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = glow;
+
+    // Layer 1: Soft ceiling-light wash — very faint linear gradient from top.
+    // Simulates the ambient studio ceiling reflected across the whole face.
+    const topWash = ctx.createLinearGradient(0, s.y, 0, s.y + s.h * 0.55);
+    topWash.addColorStop(0, `rgba(255,255,255,${0.055 * amount})`);
+    topWash.addColorStop(0.5, `rgba(255,255,255,${0.018 * amount})`);
+    topWash.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = topWash;
+    ctx.fillRect(s.x, s.y, s.w, s.h * 0.55);
+
+    // Layer 2: Main specular zone — the characteristic "hot spot" you see in
+    // professional slab photos. It is a soft ellipse sitting in the upper-right
+    // quadrant, as if a studio softbox above-right is being reflected.
+    const spotCX = s.x + s.w * 0.68;
+    const spotCY = s.y + s.h * 0.26;
+    const spotRX = s.w * 0.30;
+    const spotRY = s.h * 0.21;
+
+    ctx.save();
+    ctx.translate(spotCX, spotCY);
+    ctx.scale(spotRX, spotRY);
+    const spot = ctx.createRadialGradient(-0.05, -0.1, 0, 0, 0, 1);
+    spot.addColorStop(0,   `rgba(255,255,255,${0.28 * amount})`);
+    spot.addColorStop(0.3, `rgba(255,255,255,${0.14 * amount})`);
+    spot.addColorStop(0.65,`rgba(255,255,255,${0.04 * amount})`);
+    spot.addColorStop(1,   "rgba(255,255,255,0)");
+    ctx.fillStyle = spot;
     ctx.beginPath();
-    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    if (state.finish === "glossy") {
-      // Fine, diffuse window-like reflections. Their boundaries are feathered.
-      for (const [offset, opacity, thickness] of [
-        [0.235, 0.17, 0.015],
-        [0.275, 0.1, 0.01],
-      ]) {
-        const yy = s.y + s.h * offset;
-        const xStart = s.x + s.w * 0.78;
-        const ww = s.w * 0.165;
-        const grad = ctx.createLinearGradient(xStart, 0, xStart + ww, 0);
-        grad.addColorStop(0, "rgba(255,255,255,0)");
-        grad.addColorStop(0.2, `rgba(255,255,255,${opacity * amount})`);
-        grad.addColorStop(0.7, `rgba(255,255,255,${opacity * amount})`);
-        grad.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = grad;
-        ctx.fillRect(xStart, yy, ww, Math.max(2, s.h * thickness));
-      }
+    // Layer 3 (Glossy only): sharper bevel specular line along the top edge,
+    // mimicking the chamfer/edge highlight seen on mirror-polished stone.
+    if (isGlossy) {
+      const bevel = ctx.createLinearGradient(s.x, 0, s.x + s.w, 0);
+      bevel.addColorStop(0.0,  `rgba(255,255,255,${0.22 * amount})`);
+      bevel.addColorStop(0.28, `rgba(255,255,255,${0.60 * amount})`);
+      bevel.addColorStop(0.55, `rgba(255,255,255,${0.42 * amount})`);
+      bevel.addColorStop(0.80, `rgba(255,255,255,${0.55 * amount})`);
+      bevel.addColorStop(1.0,  `rgba(255,255,255,${0.18 * amount})`);
+      ctx.strokeStyle = bevel;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(s.x + 4, s.y + 1.5);
+      ctx.lineTo(s.x + s.w - 4, s.y + 1.5);
+      ctx.stroke();
     }
+
+    ctx.restore();
   }
 
   function paintSlab(ctx, s) {
@@ -446,6 +464,298 @@
     updateStatus();
   }
 
+  function getRotatedSourceDimensions() {
+    if (!state.rawImage) return { w: 1, h: 1 };
+    const isPerpendicular = (state.cropRotation % 180) !== 0;
+    return {
+      w: isPerpendicular ? state.rawImage.naturalHeight : state.rawImage.naturalWidth,
+      h: isPerpendicular ? state.rawImage.naturalWidth : state.rawImage.naturalHeight,
+    };
+  }
+
+  function renderCropCanvas() {
+    if (!state.rawImage || !els.cropCanvas) return;
+    const isPerpendicular = (state.cropRotation % 180) !== 0;
+    const origW = state.rawImage.naturalWidth;
+    const origH = state.rawImage.naturalHeight;
+    const targetW = isPerpendicular ? origH : origW;
+    const targetH = isPerpendicular ? origW : origH;
+
+    els.cropCanvas.width = targetW;
+    els.cropCanvas.height = targetH;
+    const ctx = els.cropCanvas.getContext("2d");
+    ctx.save();
+    ctx.translate(targetW / 2, targetH / 2);
+    ctx.rotate((state.cropRotation * Math.PI) / 180);
+    ctx.drawImage(state.rawImage, -origW / 2, -origH / 2);
+    ctx.restore();
+
+    syncCropBoxStyle();
+  }
+
+  function syncCropBoxStyle() {
+    if (!els.cropBox || !state.rawImage) return;
+    const b = state.cropBox;
+    els.cropBox.style.left = `${(b.x * 100).toFixed(2)}%`;
+    els.cropBox.style.top = `${(b.y * 100).toFixed(2)}%`;
+    els.cropBox.style.width = `${(b.w * 100).toFixed(2)}%`;
+    els.cropBox.style.height = `${(b.h * 100).toFixed(2)}%`;
+
+    const dim = getRotatedSourceDimensions();
+    const pxW = Math.max(1, Math.round(b.w * dim.w));
+    const pxH = Math.max(1, Math.round(b.h * dim.h));
+    if (els.cropDimensionsBadge) {
+      els.cropDimensionsBadge.textContent = `${pxW} × ${pxH} px`;
+    }
+  }
+
+  let activeCropAction = null;
+
+  function initCropInteractions() {
+    const stage = els.cropStage;
+    const box = els.cropBox;
+    if (!stage || !box) return;
+
+    box.addEventListener("pointerdown", (e) => {
+      const handleEl = e.target.closest(".crop-handle");
+      const rect = stage.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const handle = handleEl ? handleEl.dataset.handle : null;
+      activeCropAction = {
+        type: handle ? "resize" : "move",
+        handle: handle,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        startBox: { ...state.cropBox },
+        stageW: rect.width,
+        stageH: rect.height,
+      };
+
+      box.setPointerCapture(e.pointerId);
+    });
+
+    box.addEventListener("pointermove", (e) => {
+      if (!activeCropAction || activeCropAction.pointerId !== e.pointerId) return;
+      e.preventDefault();
+
+      const dx = (e.clientX - activeCropAction.startX) / activeCropAction.stageW;
+      const dy = (e.clientY - activeCropAction.startY) / activeCropAction.stageH;
+      const sb = activeCropAction.startBox;
+      const minW = Math.max(0.04, 24 / activeCropAction.stageW);
+      const minH = Math.max(0.04, 24 / activeCropAction.stageH);
+
+      if (activeCropAction.type === "move") {
+        let newX = sb.x + dx;
+        let newY = sb.y + dy;
+        newX = Math.max(0, Math.min(1 - sb.w, newX));
+        newY = Math.max(0, Math.min(1 - sb.h, newY));
+        state.cropBox.x = newX;
+        state.cropBox.y = newY;
+      } else if (activeCropAction.type === "resize") {
+        const h = activeCropAction.handle;
+        let x1 = sb.x;
+        let y1 = sb.y;
+        let x2 = sb.x + sb.w;
+        let y2 = sb.y + sb.h;
+
+        if (h.includes("w")) {
+          x1 = Math.min(sb.x + dx, x2 - minW);
+          x1 = Math.max(0, x1);
+        }
+        if (h.includes("e")) {
+          x2 = Math.max(sb.x + sb.w + dx, x1 + minW);
+          x2 = Math.min(1, x2);
+        }
+        if (h.includes("n")) {
+          y1 = Math.min(sb.y + dy, y2 - minH);
+          y1 = Math.max(0, y1);
+        }
+        if (h.includes("s")) {
+          y2 = Math.max(sb.y + sb.h + dy, y1 + minH);
+          y2 = Math.min(1, y2);
+        }
+
+        state.cropBox = {
+          x: x1,
+          y: y1,
+          w: x2 - x1,
+          h: y2 - y1,
+        };
+      }
+
+      syncCropBoxStyle();
+    });
+
+    const stopDrag = (e) => {
+      if (activeCropAction && activeCropAction.pointerId === e.pointerId) {
+        if (box.hasPointerCapture(e.pointerId)) {
+          box.releasePointerCapture(e.pointerId);
+        }
+        activeCropAction = null;
+      }
+    };
+
+    box.addEventListener("pointerup", stopDrag);
+    box.addEventListener("pointercancel", stopDrag);
+
+    box.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 0.05 : 0.01;
+      let handled = false;
+      if (e.key === "ArrowLeft") {
+        state.cropBox.x = Math.max(0, state.cropBox.x - step);
+        handled = true;
+      } else if (e.key === "ArrowRight") {
+        state.cropBox.x = Math.min(1 - state.cropBox.w, state.cropBox.x + step);
+        handled = true;
+      } else if (e.key === "ArrowUp") {
+        state.cropBox.y = Math.max(0, state.cropBox.y - step);
+        handled = true;
+      } else if (e.key === "ArrowDown") {
+        state.cropBox.y = Math.min(1 - state.cropBox.h, state.cropBox.y + step);
+        handled = true;
+      }
+      if (handled) {
+        e.preventDefault();
+        syncCropBoxStyle();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (els.cropView && !els.cropView.hidden) {
+        syncCropBoxStyle();
+      }
+    });
+  }
+
+  function rotateCrop() {
+    state.cropRotation = (state.cropRotation + 90) % 360;
+    state.cropBox = { x: 0.04, y: 0.04, w: 0.92, h: 0.92 };
+    renderCropCanvas();
+    toast(`Foto diputar ke ${state.cropRotation}°.`);
+  }
+
+  function resetCropBox() {
+    state.cropBox = { x: 0, y: 0, w: 1, h: 1 };
+    syncCropBoxStyle();
+    toast("Seluruh area foto dipilih.");
+  }
+
+  function applyCrop() {
+    if (!state.rawImage) return;
+    const dim = getRotatedSourceDimensions();
+    const cropX = Math.round(state.cropBox.x * dim.w);
+    const cropY = Math.round(state.cropBox.y * dim.h);
+    const cropW = Math.max(10, Math.round(state.cropBox.w * dim.w));
+    const cropH = Math.max(10, Math.round(state.cropBox.h * dim.h));
+
+    const offscreen = document.createElement("canvas");
+    offscreen.width = cropW;
+    offscreen.height = cropH;
+    const ctx = offscreen.getContext("2d");
+    ctx.drawImage(
+      els.cropCanvas,
+      cropX, cropY, cropW, cropH,
+      0, 0, cropW, cropH,
+    );
+
+    state.image = offscreen;
+    state.source = { x: 0, y: 0, w: cropW, h: cropH };
+
+    try {
+      const thumbUrl = offscreen.toDataURL("image/jpeg", 0.85);
+      if (els.uploadThumb) {
+        els.uploadThumb.src = thumbUrl;
+        els.uploadThumb.hidden = false;
+      }
+    } catch (_) {}
+
+    if (els.editorFileName) els.editorFileName.textContent = state.fileName;
+    if (els.editorFileMeta) els.editorFileMeta.textContent = `${cropW} × ${cropH} px (Dipangkas)`;
+
+    clearDimensions();
+    state.position = 0;
+    els.position.value = "0";
+
+    els.cropView.hidden = true;
+    els.editorView.hidden = false;
+    showVisualState("ready");
+    updateStatus();
+    toast("Potongan foto diterapkan. Silakan atur slab Anda.");
+
+    if (window.matchMedia("(max-width: 991.98px)").matches) {
+      document
+        .getElementById("previewTitle")
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }
+
+  function skipCrop() {
+    if (!state.rawImage) return;
+    const dim = getRotatedSourceDimensions();
+
+    let workingImg;
+    if (state.cropRotation !== 0) {
+      const offscreen = document.createElement("canvas");
+      offscreen.width = dim.w;
+      offscreen.height = dim.h;
+      const ctx = offscreen.getContext("2d");
+      ctx.drawImage(els.cropCanvas, 0, 0);
+      workingImg = offscreen;
+    } else {
+      workingImg = state.rawImage;
+    }
+
+    state.image = workingImg;
+    state.source = { x: 0, y: 0, w: dim.w, h: dim.h };
+
+    try {
+      const thumbUrl = (state.cropRotation !== 0 && workingImg.toDataURL)
+        ? workingImg.toDataURL("image/jpeg", 0.85)
+        : state.userPhotoUrl;
+      if (els.uploadThumb) {
+        els.uploadThumb.src = thumbUrl;
+        els.uploadThumb.hidden = false;
+      }
+    } catch (_) {}
+
+    if (els.editorFileName) els.editorFileName.textContent = state.fileName;
+    if (els.editorFileMeta) els.editorFileMeta.textContent = `${dim.w} × ${dim.h} px (Foto penuh)`;
+
+    clearDimensions();
+    state.position = 0;
+    els.position.value = "0";
+
+    els.cropView.hidden = true;
+    els.editorView.hidden = false;
+    showVisualState("ready");
+    updateStatus();
+    toast("Menggunakan foto penuh tanpa potongan.");
+
+    if (window.matchMedia("(max-width: 991.98px)").matches) {
+      document
+        .getElementById("previewTitle")
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }
+
+  function reopenCrop() {
+    if (!state.rawImage) return;
+    els.editorView.hidden = true;
+    els.cropView.hidden = false;
+    renderCropCanvas();
+    toast("Sesuaikan kembali area pangkas.");
+    if (window.matchMedia("(max-width: 991.98px)").matches) {
+      document
+        .getElementById("cropTitle")
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }
+
   async function acceptFile(file) {
     if (!file) return;
     if (
@@ -472,34 +782,24 @@
       }
       if (state.userPhotoUrl) URL.revokeObjectURL(state.userPhotoUrl);
       state.userPhotoUrl = url;
-      state.image = image;
-      state.source = {
-        x: 0,
-        y: 0,
-        w: image.naturalWidth,
-        h: image.naturalHeight,
-      };
+      state.rawImage = image;
+      state.fileName = file.name;
       state.name = file.name.replace(/\.[^.]+$/, "").trim() || "Slab";
-      clearDimensions();
-      state.position = 0;
-      els.position.value = "0";
-      els.fileName.textContent = file.name;
-      els.uploadHint.textContent = `${image.naturalWidth} × ${image.naturalHeight} px`;
-      if (els.editorFileName) els.editorFileName.textContent = file.name;
-      if (els.editorFileMeta) els.editorFileMeta.textContent = `${image.naturalWidth} × ${image.naturalHeight} px`;
-      if (els.uploadThumb) {
-        els.uploadThumb.src = url;
-        els.uploadThumb.hidden = false;
-      }
+      state.cropRotation = 0;
+      state.cropBox = { x: 0.04, y: 0.04, w: 0.92, h: 0.92 };
+
+      // Masuk ke Tahap 2: Crop View
       if (els.uploadView) els.uploadView.hidden = true;
-      if (els.editorView) els.editorView.hidden = false;
-      showVisualState("ready");
-      updateStatus();
-      toast("Foto siap. Anda dapat mengatur ukuran dan finishing.");
+      if (els.editorView) els.editorView.hidden = true;
+      if (els.cropView) els.cropView.hidden = false;
+
+      renderCropCanvas();
+      toast("Foto dimuat. Silakan pangkas jika perlu, atau lewati.");
+
       if (window.matchMedia("(max-width: 991.98px)").matches) {
         document
-          .getElementById("previewTitle")
-          ?.scrollIntoView({ block: "start" });
+          .getElementById("cropTitle")
+          ?.scrollIntoView({ block: "start", behavior: "smooth" });
       }
     } catch (error) {
       URL.revokeObjectURL(url);
@@ -516,9 +816,11 @@
     state.loadSequence++;
     if (state.userPhotoUrl) URL.revokeObjectURL(state.userPhotoUrl);
     state.userPhotoUrl = null;
+    state.rawImage = null;
     state.image = null;
     state.source = null;
     state.name = "Belum ada foto";
+    state.fileName = "";
     clearDimensions();
     els.fileName.textContent = "Tarik & lepas foto slab ke sini";
     els.uploadHint.textContent = "JPG, PNG, WEBP, AVIF hingga 40 MB";
@@ -528,6 +830,7 @@
       els.uploadThumb.removeAttribute("src");
     }
     if (els.imageInput) els.imageInput.value = "";
+    if (els.cropView) els.cropView.hidden = true;
     if (els.editorView) els.editorView.hidden = true;
     if (els.uploadView) els.uploadView.hidden = false;
     showVisualState("empty");
@@ -738,7 +1041,7 @@
     els.createAgainBtn?.addEventListener("click", removePhoto);
     els.brandLink?.addEventListener("click", (e) => {
       e.preventDefault();
-      if (state.image) {
+      if (state.image || state.rawImage) {
         removePhoto();
       }
     });
@@ -746,6 +1049,14 @@
     els.download.addEventListener("click", () => {
       void downloadImage();
     });
+
+    initCropInteractions();
+    els.cropRotateBtn?.addEventListener("click", rotateCrop);
+    els.cropResetBtn?.addEventListener("click", resetCropBox);
+    els.cropChangePhotoBtn?.addEventListener("click", () => els.imageInput.click());
+    els.skipCropBtn?.addEventListener("click", skipCrop);
+    els.applyCropBtn?.addEventListener("click", applyCrop);
+    els.recropBtn?.addEventListener("click", reopenCrop);
   }
 
   async function init() {
@@ -753,6 +1064,7 @@
     setFinish("glossy");
     setMode("cover");
     if (els.uploadView) els.uploadView.hidden = false;
+    if (els.cropView) els.cropView.hidden = true;
     if (els.editorView) els.editorView.hidden = true;
     showVisualState("loading");
     try {

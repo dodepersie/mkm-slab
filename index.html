@@ -3,6 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <meta name="theme-color" content="#edeae6" />
     <meta
       name="description"
@@ -10,8 +16,8 @@
     />
     <title>Buat ilustrasi slab lebih mudah hehe</title>
     <link rel="stylesheet" href="./vendor/bootstrap.min.css" />
-    <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js" defer></script>
+    <link rel="stylesheet" href="./styles.css?v=3.1" />
+    <script src="./app.js?v=2.1" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#studio">Lewati ke editor</a>
@@ -34,8 +40,9 @@
         <div class="upload-hero">
           <h1>Buat ilustrasi slab</h1>
           <p>
-            Tinggal upload foto slab yang polos, atur ukurannya kalau tau, pilih
-            finishingnya mau apa, selesai deh
+            Tinggal upload foto slab, nanti kalau mau dicrop, tinggal crop aja,
+            terus atur ukurannya kalau tau, pilih finishingnya mau apa, selesai
+            deh
           </p>
         </div>
 
@@ -84,7 +91,203 @@
         </div>
       </section>
 
-      <!-- FASE 2: EDITOR VIEW (Muncul setelah foto diunggah) -->
+      <!-- FASE 2: CROP VIEW (Pangkas foto slab sebelum setting) -->
+      <section
+        id="cropView"
+        class="crop-view"
+        hidden
+        aria-labelledby="cropTitle"
+      >
+        <div class="card crop-card">
+          <div class="crop-header">
+            <div class="crop-header-text">
+              <h2 id="cropTitle">Pangkas foto slab</h2>
+              <p>
+                Tarik sudut atau tepi bingkai untuk memotong area di luar slab.
+                Lewati jika foto sudah pas.
+              </p>
+            </div>
+            <div class="crop-toolbar">
+              <button
+                type="button"
+                id="cropRotateBtn"
+                class="btn btn-outline-secondary btn-sm"
+                title="Putar foto 90 derajat searah jarum jam"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21.5 2v6h-6" />
+                  <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
+                Putar 90°
+              </button>
+              <button
+                type="button"
+                id="cropResetBtn"
+                class="btn btn-outline-secondary btn-sm"
+                title="Pilih seluruh area foto"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 3h6v2H5v4H3V3z" />
+                  <path d="M21 3h-6v2h4v4h2V3z" />
+                  <path d="M3 21h6v-2H5v-4H3v6z" />
+                  <path d="M21 21h-6v-2h4v-4h2v6z" />
+                </svg>
+                Pilih semua
+              </button>
+              <button
+                type="button"
+                id="cropChangePhotoBtn"
+                class="btn btn-outline-secondary btn-sm"
+                title="Kembali ke halaman unggah untuk memilih foto lain"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Ganti foto
+              </button>
+            </div>
+          </div>
+
+          <div class="crop-stage-container" id="cropStageContainer">
+            <div class="crop-stage" id="cropStage">
+              <canvas
+                id="cropCanvas"
+                class="crop-canvas"
+                aria-hidden="true"
+              ></canvas>
+              <div
+                id="cropBox"
+                class="crop-box"
+                tabindex="0"
+                role="region"
+                aria-label="Kotak pangkas foto. Geser kotak dengan drag atau tombol panah."
+              >
+                <div
+                  class="crop-grid-line crop-grid-h1"
+                  aria-hidden="true"
+                ></div>
+                <div
+                  class="crop-grid-line crop-grid-h2"
+                  aria-hidden="true"
+                ></div>
+                <div
+                  class="crop-grid-line crop-grid-v1"
+                  aria-hidden="true"
+                ></div>
+                <div
+                  class="crop-grid-line crop-grid-v2"
+                  aria-hidden="true"
+                ></div>
+
+                <div
+                  class="crop-size-tag"
+                  id="cropDimensionsBadge"
+                  aria-live="polite"
+                >
+                  0 × 0 px
+                </div>
+
+                <div
+                  class="crop-handle handle-nw"
+                  data-handle="nw"
+                  aria-label="Tarik sudut kiri atas"
+                ></div>
+                <div
+                  class="crop-handle handle-ne"
+                  data-handle="ne"
+                  aria-label="Tarik sudut kanan atas"
+                ></div>
+                <div
+                  class="crop-handle handle-se"
+                  data-handle="se"
+                  aria-label="Tarik sudut kanan bawah"
+                ></div>
+                <div
+                  class="crop-handle handle-sw"
+                  data-handle="sw"
+                  aria-label="Tarik sudut kiri bawah"
+                ></div>
+                <div
+                  class="crop-handle handle-n"
+                  data-handle="n"
+                  aria-label="Tarik sisi atas"
+                ></div>
+                <div
+                  class="crop-handle handle-e"
+                  data-handle="e"
+                  aria-label="Tarik sisi kanan"
+                ></div>
+                <div
+                  class="crop-handle handle-s"
+                  data-handle="s"
+                  aria-label="Tarik sisi bawah"
+                ></div>
+                <div
+                  class="crop-handle handle-w"
+                  data-handle="w"
+                  aria-label="Tarik sisi kiri"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="crop-footer">
+            <button
+              type="button"
+              id="skipCropBtn"
+              class="btn btn-outline-secondary"
+            >
+              Lewati (Gunakan foto penuh)
+            </button>
+            <button type="button" id="applyCropBtn" class="btn btn-primary">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Lanjut ke pengaturan slab
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- FASE 3: EDITOR VIEW (Muncul setelah foto dipangkas atau dilewati) -->
       <div id="editorView" class="editor-view" hidden>
         <div class="editor-top-bar">
           <div class="editor-file-info">
@@ -100,6 +303,27 @@
             </div>
           </div>
           <div class="editor-actions">
+            <button
+              type="button"
+              id="recropBtn"
+              class="btn btn-outline-secondary create-again-btn"
+              title="Atur ulang pemotongan foto ini"
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 2v14a2 2 0 0 0 2 2h14" />
+                <path d="M18 22V8a2 2 0 0 0-2-2H2" />
+              </svg>
+              Pangkas ulang
+            </button>
             <button
               type="button"
               id="createAgainBtn"
@@ -121,7 +345,7 @@
                 <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
                 <path d="M3 21v-5h5" />
               </svg>
-              Buat lagi?
+              Foto baru
             </button>
           </div>
         </div>
