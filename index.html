@@ -17,7 +17,7 @@
     <title>Buat ilustrasi slab lebih mudah hehe</title>
     <link rel="stylesheet" href="./vendor/bootstrap.min.css" />
     <link rel="stylesheet" href="./styles.css?v=3.3" />
-    <script src="./app.js?v=2.2" defer></script>
+    <script src="./app.js?v=2.4" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#studio">Lewati ke editor</a>
@@ -110,6 +110,27 @@
             <div class="crop-toolbar">
               <button
                 type="button"
+                id="cropSkewToggleBtn"
+                class="btn btn-outline-secondary btn-sm"
+                title="Tarik 4 sudut secara bebas untuk meluruskan marmer yang miring atau difoto menyerong"
+                aria-pressed="false"
+              >
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 18l4-12h14l-4 12H3z" />
+                </svg>
+                <span id="cropSkewToggleText">Mode Skew</span>
+              </button>
+              <button
+                type="button"
                 id="cropRotateBtn"
                 class="btn btn-outline-secondary btn-sm"
                 title="Putar foto 90 derajat searah jarum jam"
@@ -177,10 +198,6 @@
             </div>
           </div>
 
-          <label class="perspective-toggle">
-            <input type="checkbox" id="perspectiveMode" aria-describedby="cropHelp" />
-            Luruskan perspektif (4 sudut)
-          </label>
           <div class="crop-stage-container" id="cropStageContainer">
             <div class="crop-stage" id="cropStage">
               <canvas
@@ -188,15 +205,60 @@
                 class="crop-canvas"
                 aria-hidden="true"
               ></canvas>
-              <div id="perspectiveOverlay" hidden>
-                <svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-                  <path fill-rule="evenodd" fill="rgba(10,12,16,.65)" />
-                  <polygon fill="none" stroke="white" stroke-width="2" vector-effect="non-scaling-stroke" />
+              <div id="skewOverlay" class="skew-overlay" hidden>
+                <svg
+                  id="skewSvg"
+                  class="skew-svg"
+                  viewBox="0 0 1000 1000"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <path id="skewMaskPath" fill-rule="evenodd" fill="rgba(10, 12, 16, 0.65)" />
+                  <line id="skewGridH1" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
+                  <line id="skewGridH2" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
+                  <line id="skewGridV1" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
+                  <line id="skewGridV2" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
+                  <polygon
+                    id="skewPolygon"
+                    fill="rgba(0, 102, 255, 0.08)"
+                    stroke="#ffffff"
+                    stroke-width="1.8"
+                    vector-effect="non-scaling-stroke"
+                  />
                 </svg>
-                <button type="button" aria-label="Sudut kiri atas"></button>
-                <button type="button" aria-label="Sudut kanan atas"></button>
-                <button type="button" aria-label="Sudut kanan bawah"></button>
-                <button type="button" aria-label="Sudut kiri bawah"></button>
+                <div
+                  id="skewHandleTL"
+                  class="skew-handle skew-handle-tl"
+                  data-corner="tl"
+                  tabindex="0"
+                  role="slider"
+                  aria-label="Sudut kiri atas"
+                ></div>
+                <div
+                  id="skewHandleTR"
+                  class="skew-handle skew-handle-tr"
+                  data-corner="tr"
+                  tabindex="0"
+                  role="slider"
+                  aria-label="Sudut kanan atas"
+                ></div>
+                <div
+                  id="skewHandleBR"
+                  class="skew-handle skew-handle-br"
+                  data-corner="br"
+                  tabindex="0"
+                  role="slider"
+                  aria-label="Sudut kanan bawah"
+                ></div>
+                <div
+                  id="skewHandleBL"
+                  class="skew-handle skew-handle-bl"
+                  data-corner="bl"
+                  tabindex="0"
+                  role="slider"
+                  aria-label="Sudut kiri bawah"
+                ></div>
+                <div class="crop-size-tag" id="skewDimensionsBadge" aria-live="polite">0 × 0 px</div>
               </div>
               <div
                 id="cropBox"
@@ -270,6 +332,19 @@
                   data-handle="w"
                   aria-label="Tarik sisi kiri"
                 ></div>
+              </div>
+            </div>
+
+            <div id="cropProcessingOverlay" class="crop-processing-overlay" hidden aria-live="polite">
+              <div class="crop-processing-card">
+                <div class="crop-spinner" aria-hidden="true"></div>
+                <div class="crop-processing-text">
+                  <strong id="cropProcessingTitle">Meluruskan foto slab...</strong>
+                  <span id="cropProcessingProgress">Memproses piksel (0%)</span>
+                </div>
+                <div class="crop-progress-track" aria-hidden="true">
+                  <div id="cropProgressBar" class="crop-progress-bar"></div>
+                </div>
               </div>
             </div>
           </div>

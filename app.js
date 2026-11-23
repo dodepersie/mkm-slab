@@ -49,6 +49,22 @@
     cropRotateBtn: document.getElementById("cropRotateBtn"),
     cropResetBtn: document.getElementById("cropResetBtn"),
     cropChangePhotoBtn: document.getElementById("cropChangePhotoBtn"),
+    cropSkewToggleBtn: document.getElementById("cropSkewToggleBtn"),
+    cropSkewToggleText: document.getElementById("cropSkewToggleText"),
+    cropHelp: document.getElementById("cropHelp"),
+    skewOverlay: document.getElementById("skewOverlay"),
+    skewSvg: document.getElementById("skewSvg"),
+    skewMaskPath: document.getElementById("skewMaskPath"),
+    skewGridH1: document.getElementById("skewGridH1"),
+    skewGridH2: document.getElementById("skewGridH2"),
+    skewGridV1: document.getElementById("skewGridV1"),
+    skewGridV2: document.getElementById("skewGridV2"),
+    skewPolygon: document.getElementById("skewPolygon"),
+    skewHandleTL: document.getElementById("skewHandleTL"),
+    skewHandleTR: document.getElementById("skewHandleTR"),
+    skewHandleBR: document.getElementById("skewHandleBR"),
+    skewHandleBL: document.getElementById("skewHandleBL"),
+    skewDimensionsBadge: document.getElementById("skewDimensionsBadge"),
     skipCropBtn: document.getElementById("skipCropBtn"),
     applyCropBtn: document.getElementById("applyCropBtn"),
     recropBtn: document.getElementById("recropBtn"),
@@ -69,6 +85,13 @@
     rawImage: null,
     cropRotation: 0,
     cropBox: { x: 0.04, y: 0.04, w: 0.92, h: 0.92 },
+    cropMode: "standard", // "standard" or "skew"
+    skewPoints: {
+      tl: { x: 0.04, y: 0.04 },
+      tr: { x: 0.96, y: 0.04 },
+      br: { x: 0.96, y: 0.96 },
+      bl: { x: 0.04, y: 0.96 },
+    },
     finish: "glossy",
     shine: 70,
     mode: "cover",
@@ -491,6 +514,7 @@
     ctx.restore();
 
     syncCropBoxStyle();
+    syncSkewOverlayStyle();
   }
 
   function syncCropBoxStyle() {
@@ -506,6 +530,85 @@
     const pxH = Math.max(1, Math.round(b.h * dim.h));
     if (els.cropDimensionsBadge) {
       els.cropDimensionsBadge.textContent = `${pxW} × ${pxH} px`;
+    }
+  }
+
+  function syncSkewOverlayStyle() {
+    if (!els.skewOverlay || !state.rawImage) return;
+    const pts = state.skewPoints;
+    const to1000 = (v) => (v * 1000).toFixed(1);
+
+    if (els.skewHandleTL) {
+      els.skewHandleTL.style.left = `${(pts.tl.x * 100).toFixed(2)}%`;
+      els.skewHandleTL.style.top = `${(pts.tl.y * 100).toFixed(2)}%`;
+    }
+    if (els.skewHandleTR) {
+      els.skewHandleTR.style.left = `${(pts.tr.x * 100).toFixed(2)}%`;
+      els.skewHandleTR.style.top = `${(pts.tr.y * 100).toFixed(2)}%`;
+    }
+    if (els.skewHandleBR) {
+      els.skewHandleBR.style.left = `${(pts.br.x * 100).toFixed(2)}%`;
+      els.skewHandleBR.style.top = `${(pts.br.y * 100).toFixed(2)}%`;
+    }
+    if (els.skewHandleBL) {
+      els.skewHandleBL.style.left = `${(pts.bl.x * 100).toFixed(2)}%`;
+      els.skewHandleBL.style.top = `${(pts.bl.y * 100).toFixed(2)}%`;
+    }
+
+    if (els.skewPolygon) {
+      const pStr = `${to1000(pts.tl.x)},${to1000(pts.tl.y)} ${to1000(pts.tr.x)},${to1000(pts.tr.y)} ${to1000(pts.br.x)},${to1000(pts.br.y)} ${to1000(pts.bl.x)},${to1000(pts.bl.y)}`;
+      els.skewPolygon.setAttribute("points", pStr);
+    }
+
+    if (els.skewMaskPath) {
+      const maskD = `M 0 0 L 1000 0 L 1000 1000 L 0 1000 Z M ${to1000(pts.tl.x)} ${to1000(pts.tl.y)} L ${to1000(pts.tr.x)} ${to1000(pts.tr.y)} L ${to1000(pts.br.x)} ${to1000(pts.br.y)} L ${to1000(pts.bl.x)} ${to1000(pts.bl.y)} Z`;
+      els.skewMaskPath.setAttribute("d", maskD);
+    }
+
+    const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    const top1 = lerp(pts.tl, pts.tr, 1 / 3);
+    const top2 = lerp(pts.tl, pts.tr, 2 / 3);
+    const bot1 = lerp(pts.bl, pts.br, 1 / 3);
+    const bot2 = lerp(pts.bl, pts.br, 2 / 3);
+    const lft1 = lerp(pts.tl, pts.bl, 1 / 3);
+    const lft2 = lerp(pts.tl, pts.bl, 2 / 3);
+    const rgt1 = lerp(pts.tr, pts.br, 1 / 3);
+    const rgt2 = lerp(pts.tr, pts.br, 2 / 3);
+
+    if (els.skewGridV1) {
+      els.skewGridV1.setAttribute("x1", to1000(top1.x));
+      els.skewGridV1.setAttribute("y1", to1000(top1.y));
+      els.skewGridV1.setAttribute("x2", to1000(bot1.x));
+      els.skewGridV1.setAttribute("y2", to1000(bot1.y));
+    }
+    if (els.skewGridV2) {
+      els.skewGridV2.setAttribute("x1", to1000(top2.x));
+      els.skewGridV2.setAttribute("y1", to1000(top2.y));
+      els.skewGridV2.setAttribute("x2", to1000(bot2.x));
+      els.skewGridV2.setAttribute("y2", to1000(bot2.y));
+    }
+    if (els.skewGridH1) {
+      els.skewGridH1.setAttribute("x1", to1000(lft1.x));
+      els.skewGridH1.setAttribute("y1", to1000(lft1.y));
+      els.skewGridH1.setAttribute("x2", to1000(rgt1.x));
+      els.skewGridH1.setAttribute("y2", to1000(rgt1.y));
+    }
+    if (els.skewGridH2) {
+      els.skewGridH2.setAttribute("x1", to1000(lft2.x));
+      els.skewGridH2.setAttribute("y1", to1000(lft2.y));
+      els.skewGridH2.setAttribute("x2", to1000(rgt2.x));
+      els.skewGridH2.setAttribute("y2", to1000(rgt2.y));
+    }
+
+    const dim = getRotatedSourceDimensions();
+    const topW = Math.hypot((pts.tr.x - pts.tl.x) * dim.w, (pts.tr.y - pts.tl.y) * dim.h);
+    const botW = Math.hypot((pts.br.x - pts.bl.x) * dim.w, (pts.br.y - pts.bl.y) * dim.h);
+    const lftH = Math.hypot((pts.bl.x - pts.tl.x) * dim.w, (pts.bl.y - pts.tl.y) * dim.h);
+    const rgtH = Math.hypot((pts.br.x - pts.tr.x) * dim.w, (pts.br.y - pts.tr.y) * dim.h);
+    const pxW = Math.max(1, Math.round(Math.max(topW, botW)));
+    const pxH = Math.max(1, Math.round(Math.max(lftH, rgtH)));
+    if (els.skewDimensionsBadge) {
+      els.skewDimensionsBadge.textContent = `${pxW} × ${pxH} px (Skew)`;
     }
   }
 
@@ -628,40 +731,372 @@
     window.addEventListener("resize", () => {
       if (els.cropView && !els.cropView.hidden) {
         syncCropBoxStyle();
+        syncSkewOverlayStyle();
       }
     });
   }
 
+  let activeSkewAction = null;
+
+  function initSkewInteractions() {
+    const stage = els.cropStage;
+    const overlay = els.skewOverlay;
+    if (!stage || !overlay) return;
+
+    overlay.querySelectorAll(".skew-handle").forEach((handleEl) => {
+      handleEl.addEventListener("pointerdown", (e) => {
+        const corner = handleEl.dataset.corner;
+        if (!corner) return;
+        const rect = stage.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        activeSkewAction = {
+          type: "corner",
+          corner: corner,
+          pointerId: e.pointerId,
+          handleEl: handleEl,
+          stageLeft: rect.left,
+          stageTop: rect.top,
+          stageW: rect.width,
+          stageH: rect.height,
+        };
+
+        handleEl.classList.add("active");
+        handleEl.setPointerCapture(e.pointerId);
+      });
+    });
+
+    if (els.skewPolygon) {
+      els.skewPolygon.addEventListener("pointerdown", (e) => {
+        const rect = stage.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        activeSkewAction = {
+          type: "move",
+          pointerId: e.pointerId,
+          targetEl: els.skewPolygon,
+          startX: e.clientX,
+          startY: e.clientY,
+          startPoints: JSON.parse(JSON.stringify(state.skewPoints)),
+          stageW: rect.width,
+          stageH: rect.height,
+        };
+
+        els.skewPolygon.setPointerCapture(e.pointerId);
+      });
+    }
+
+    const onPointerMove = (e) => {
+      if (!activeSkewAction || activeSkewAction.pointerId !== e.pointerId) return;
+      e.preventDefault();
+
+      if (activeSkewAction.type === "corner") {
+        const corner = activeSkewAction.corner;
+        let nx = (e.clientX - activeSkewAction.stageLeft) / activeSkewAction.stageW;
+        let ny = (e.clientY - activeSkewAction.stageTop) / activeSkewAction.stageH;
+        nx = Math.max(0, Math.min(1, nx));
+        ny = Math.max(0, Math.min(1, ny));
+
+        state.skewPoints[corner] = { x: nx, y: ny };
+        syncSkewOverlayStyle();
+      } else if (activeSkewAction.type === "move") {
+        const dx = (e.clientX - activeSkewAction.startX) / activeSkewAction.stageW;
+        const dy = (e.clientY - activeSkewAction.startY) / activeSkewAction.stageH;
+        const sp = activeSkewAction.startPoints;
+
+        const corners = ["tl", "tr", "br", "bl"];
+        let valid = true;
+        for (const c of corners) {
+          const testX = sp[c].x + dx;
+          const testY = sp[c].y + dy;
+          if (testX < 0 || testX > 1 || testY < 0 || testY > 1) {
+            valid = false;
+            break;
+          }
+        }
+        if (valid) {
+          for (const c of corners) {
+            state.skewPoints[c].x = sp[c].x + dx;
+            state.skewPoints[c].y = sp[c].y + dy;
+          }
+          syncSkewOverlayStyle();
+        }
+      }
+    };
+
+    const onPointerUp = (e) => {
+      if (!activeSkewAction || activeSkewAction.pointerId !== e.pointerId) return;
+      if (activeSkewAction.handleEl && activeSkewAction.handleEl.hasPointerCapture(e.pointerId)) {
+        activeSkewAction.handleEl.releasePointerCapture(e.pointerId);
+        activeSkewAction.handleEl.classList.remove("active");
+      }
+      if (activeSkewAction.targetEl && activeSkewAction.targetEl.hasPointerCapture(e.pointerId)) {
+        activeSkewAction.targetEl.releasePointerCapture(e.pointerId);
+      }
+      activeSkewAction = null;
+    };
+
+    overlay.addEventListener("pointermove", onPointerMove);
+    overlay.addEventListener("pointerup", onPointerUp);
+    overlay.addEventListener("pointercancel", onPointerUp);
+
+    overlay.querySelectorAll(".skew-handle").forEach((handleEl) => {
+      handleEl.addEventListener("keydown", (e) => {
+        const corner = handleEl.dataset.corner;
+        if (!corner) return;
+        const step = e.shiftKey ? 0.05 : 0.01;
+        let handled = false;
+        if (e.key === "ArrowLeft") {
+          state.skewPoints[corner].x = Math.max(0, state.skewPoints[corner].x - step);
+          handled = true;
+        } else if (e.key === "ArrowRight") {
+          state.skewPoints[corner].x = Math.min(1, state.skewPoints[corner].x + step);
+          handled = true;
+        } else if (e.key === "ArrowUp") {
+          state.skewPoints[corner].y = Math.max(0, state.skewPoints[corner].y - step);
+          handled = true;
+        } else if (e.key === "ArrowDown") {
+          state.skewPoints[corner].y = Math.min(1, state.skewPoints[corner].y + step);
+          handled = true;
+        }
+        if (handled) {
+          e.preventDefault();
+          syncSkewOverlayStyle();
+        }
+      });
+    });
+  }
+
+  function toggleCropMode(targetMode) {
+    const nextMode = targetMode || (state.cropMode === "standard" ? "skew" : "standard");
+    state.cropMode = nextMode;
+
+    if (nextMode === "skew") {
+      const b = state.cropBox;
+      state.skewPoints = {
+        tl: { x: b.x, y: b.y },
+        tr: { x: b.x + b.w, y: b.y },
+        br: { x: b.x + b.w, y: b.y + b.h },
+        bl: { x: b.x, y: b.y + b.h },
+      };
+
+      if (els.cropBox) els.cropBox.hidden = true;
+      if (els.skewOverlay) els.skewOverlay.hidden = false;
+
+      if (els.cropSkewToggleBtn) {
+        els.cropSkewToggleBtn.classList.add("active", "btn-primary");
+        els.cropSkewToggleBtn.classList.remove("btn-outline-secondary");
+        els.cropSkewToggleBtn.setAttribute("aria-pressed", "true");
+      }
+      if (els.cropSkewToggleText) {
+        els.cropSkewToggleText.textContent = "Mode Skew (Aktif)";
+      }
+      if (els.cropHelp) {
+        els.cropHelp.textContent = "Tarik 4 sudut secara bebas ke sudut marmer. Foto yang miring atau difoto menyerong akan diluruskan otomatis.";
+      }
+
+      syncSkewOverlayStyle();
+      toast("Mode Skew aktif. Tarik 4 sudut untuk meluruskan bidang marmer.");
+    } else {
+      const pts = state.skewPoints;
+      const minX = Math.min(pts.tl.x, pts.tr.x, pts.br.x, pts.bl.x);
+      const maxX = Math.max(pts.tl.x, pts.tr.x, pts.br.x, pts.bl.x);
+      const minY = Math.min(pts.tl.y, pts.tr.y, pts.br.y, pts.bl.y);
+      const maxY = Math.max(pts.tl.y, pts.tr.y, pts.br.y, pts.bl.y);
+      state.cropBox = {
+        x: Math.max(0, minX),
+        y: Math.max(0, minY),
+        w: Math.max(0.04, maxX - minX),
+        h: Math.max(0.04, maxY - minY),
+      };
+
+      if (els.skewOverlay) els.skewOverlay.hidden = true;
+      if (els.cropBox) els.cropBox.hidden = false;
+
+      if (els.cropSkewToggleBtn) {
+        els.cropSkewToggleBtn.classList.remove("active", "btn-primary");
+        els.cropSkewToggleBtn.classList.add("btn-outline-secondary");
+        els.cropSkewToggleBtn.setAttribute("aria-pressed", "false");
+      }
+      if (els.cropSkewToggleText) {
+        els.cropSkewToggleText.textContent = "Mode Skew";
+      }
+      if (els.cropHelp) {
+        els.cropHelp.textContent = "Tarik sudut atau tepi bingkai untuk memotong area di luar slab. Lewati jika foto sudah pas.";
+      }
+
+      syncCropBoxStyle();
+      toast("Kembali ke mode kotak standar.");
+    }
+  }
+
   function rotateCrop() {
     state.cropRotation = (state.cropRotation + 90) % 360;
-    state.cropBox = { x: 0.04, y: 0.04, w: 0.92, h: 0.92 };
+
+    const oldBox = { ...state.cropBox };
+    state.cropBox = {
+      x: 1 - (oldBox.y + oldBox.h),
+      y: oldBox.x,
+      w: oldBox.h,
+      h: oldBox.w,
+    };
+
+    const oldPts = JSON.parse(JSON.stringify(state.skewPoints));
+    state.skewPoints = {
+      tl: { x: 1 - oldPts.bl.y, y: oldPts.bl.x },
+      tr: { x: 1 - oldPts.tl.y, y: oldPts.tl.x },
+      br: { x: 1 - oldPts.tr.y, y: oldPts.tr.x },
+      bl: { x: 1 - oldPts.br.y, y: oldPts.br.x },
+    };
+
     renderCropCanvas();
     toast(`Foto diputar ke ${state.cropRotation}°.`);
   }
 
   function resetCropBox() {
     state.cropBox = { x: 0, y: 0, w: 1, h: 1 };
+    state.skewPoints = {
+      tl: { x: 0.02, y: 0.02 },
+      tr: { x: 0.98, y: 0.02 },
+      br: { x: 0.98, y: 0.98 },
+      bl: { x: 0.02, y: 0.98 },
+    };
     syncCropBoxStyle();
+    syncSkewOverlayStyle();
     toast("Seluruh area foto dipilih.");
+  }
+
+  function warpPerspective(srcCanvas, p0, p1, p2, p3, outW, outH) {
+    const srcW = srcCanvas.width;
+    const srcH = srcCanvas.height;
+    const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
+    const srcImgData = srcCtx.getImageData(0, 0, srcW, srcH);
+    const srcBytes = srcImgData.data;
+
+    const outCanvas = document.createElement("canvas");
+    outCanvas.width = outW;
+    outCanvas.height = outH;
+    const outCtx = outCanvas.getContext("2d");
+    const outImgData = outCtx.createImageData(outW, outH);
+    const outBytes = outImgData.data;
+
+    const x0 = p0.x, y0 = p0.y;
+    const x1 = p1.x, y1 = p1.y;
+    const x2 = p2.x, y2 = p2.y;
+    const x3 = p3.x, y3 = p3.y;
+
+    const dx1 = x1 - x2, dx2 = x3 - x2;
+    const dy1 = y1 - y2, dy2 = y3 - y2;
+    const sx = x0 - x1 + x2 - x3;
+    const sy = y0 - y1 + y2 - y3;
+
+    let g = 0, h = 0;
+    const det = dx1 * dy2 - dx2 * dy1;
+    if (Math.abs(det) > 1e-7) {
+      g = (sx * dy2 - sy * dx2) / det;
+      h = (dx1 * sy - dy1 * sx) / det;
+    }
+    const a = x1 - x0 + g * x1;
+    const b = x3 - x0 + h * x3;
+    const c = x0;
+    const d = y1 - y0 + g * y1;
+    const e = y3 - y0 + h * y3;
+    const f = y0;
+
+    for (let v = 0; v < outH; v++) {
+      const t = v / outH;
+      const dstRowOffset = v * outW * 4;
+      for (let u = 0; u < outW; u++) {
+        const s = u / outW;
+        const w = g * s + h * t + 1;
+        const x = (a * s + b * t + c) / w;
+        const y = (d * s + e * t + f) / w;
+
+        const xFloor = Math.floor(x);
+        const yFloor = Math.floor(y);
+
+        if (xFloor >= 0 && xFloor < srcW - 1 && yFloor >= 0 && yFloor < srcH - 1) {
+          const fx = x - xFloor;
+          const fy = y - yFloor;
+          const fx1 = 1 - fx;
+          const fy1 = 1 - fy;
+          const w00 = fx1 * fy1;
+          const w10 = fx * fy1;
+          const w01 = fx1 * fy;
+          const w11 = fx * fy;
+
+          const i00 = (yFloor * srcW + xFloor) * 4;
+          const i10 = i00 + 4;
+          const i01 = ((yFloor + 1) * srcW + xFloor) * 4;
+          const i11 = i01 + 4;
+
+          const dIdx = dstRowOffset + u * 4;
+          outBytes[dIdx]     = (w00 * srcBytes[i00]     + w10 * srcBytes[i10]     + w01 * srcBytes[i01]     + w11 * srcBytes[i11]) | 0;
+          outBytes[dIdx + 1] = (w00 * srcBytes[i00 + 1] + w10 * srcBytes[i10 + 1] + w01 * srcBytes[i01 + 1] + w11 * srcBytes[i11 + 1]) | 0;
+          outBytes[dIdx + 2] = (w00 * srcBytes[i00 + 2] + w10 * srcBytes[i10 + 2] + w01 * srcBytes[i01 + 2] + w11 * srcBytes[i11 + 2]) | 0;
+          outBytes[dIdx + 3] = 255;
+        } else if (xFloor >= 0 && xFloor < srcW && yFloor >= 0 && yFloor < srcH) {
+          const sIdx = (yFloor * srcW + xFloor) * 4;
+          const dIdx = dstRowOffset + u * 4;
+          outBytes[dIdx]     = srcBytes[sIdx];
+          outBytes[dIdx + 1] = srcBytes[sIdx + 1];
+          outBytes[dIdx + 2] = srcBytes[sIdx + 2];
+          outBytes[dIdx + 3] = 255;
+        }
+      }
+    }
+
+    outCtx.putImageData(outImgData, 0, 0);
+    return outCanvas;
   }
 
   function applyCrop() {
     if (!state.rawImage) return;
     const dim = getRotatedSourceDimensions();
-    const cropX = Math.round(state.cropBox.x * dim.w);
-    const cropY = Math.round(state.cropBox.y * dim.h);
-    const cropW = Math.max(10, Math.round(state.cropBox.w * dim.w));
-    const cropH = Math.max(10, Math.round(state.cropBox.h * dim.h));
 
-    const offscreen = document.createElement("canvas");
-    offscreen.width = cropW;
-    offscreen.height = cropH;
-    const ctx = offscreen.getContext("2d");
-    ctx.drawImage(
-      els.cropCanvas,
-      cropX, cropY, cropW, cropH,
-      0, 0, cropW, cropH,
-    );
+    let offscreen;
+    let cropW, cropH;
+    let label;
+
+    if (state.cropMode === "skew") {
+      const p0 = { x: state.skewPoints.tl.x * dim.w, y: state.skewPoints.tl.y * dim.h };
+      const p1 = { x: state.skewPoints.tr.x * dim.w, y: state.skewPoints.tr.y * dim.h };
+      const p2 = { x: state.skewPoints.br.x * dim.w, y: state.skewPoints.br.y * dim.h };
+      const p3 = { x: state.skewPoints.bl.x * dim.w, y: state.skewPoints.bl.y * dim.h };
+
+      const topW = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+      const botW = Math.hypot(p2.x - p3.x, p2.y - p3.y);
+      const leftH = Math.hypot(p3.x - p0.x, p3.y - p0.y);
+      const rightH = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
+      cropW = Math.max(20, Math.round(Math.max(topW, botW)));
+      cropH = Math.max(20, Math.round(Math.max(leftH, rightH)));
+
+      offscreen = warpPerspective(els.cropCanvas, p0, p1, p2, p3, cropW, cropH);
+      label = `${cropW} × ${cropH} px (Diluruskan)`;
+    } else {
+      const cropX = Math.round(state.cropBox.x * dim.w);
+      const cropY = Math.round(state.cropBox.y * dim.h);
+      cropW = Math.max(10, Math.round(state.cropBox.w * dim.w));
+      cropH = Math.max(10, Math.round(state.cropBox.h * dim.h));
+
+      offscreen = document.createElement("canvas");
+      offscreen.width = cropW;
+      offscreen.height = cropH;
+      const ctx = offscreen.getContext("2d");
+      ctx.drawImage(
+        els.cropCanvas,
+        cropX, cropY, cropW, cropH,
+        0, 0, cropW, cropH,
+      );
+      label = `${cropW} × ${cropH} px (Dipangkas)`;
+    }
 
     state.image = offscreen;
     state.source = { x: 0, y: 0, w: cropW, h: cropH };
@@ -675,7 +1110,7 @@
     } catch (_) {}
 
     if (els.editorFileName) els.editorFileName.textContent = state.fileName;
-    if (els.editorFileMeta) els.editorFileMeta.textContent = `${cropW} × ${cropH} px (Dipangkas)`;
+    if (els.editorFileMeta) els.editorFileMeta.textContent = label;
 
     clearDimensions();
     state.position = 0;
@@ -685,7 +1120,7 @@
     els.editorView.hidden = false;
     showVisualState("ready");
     updateStatus();
-    toast("Potongan foto diterapkan. Silakan atur slab Anda.");
+    toast(state.cropMode === "skew" ? "Foto berhasil diluruskan dan dipangkas." : "Potongan foto diterapkan. Silakan atur slab Anda.");
 
     if (window.matchMedia("(max-width: 991.98px)").matches) {
       document
@@ -747,6 +1182,17 @@
     if (!state.rawImage) return;
     els.editorView.hidden = true;
     els.cropView.hidden = false;
+
+    if (state.cropMode === "skew") {
+      if (els.cropBox) els.cropBox.hidden = true;
+      if (els.skewOverlay) els.skewOverlay.hidden = false;
+      syncSkewOverlayStyle();
+    } else {
+      if (els.skewOverlay) els.skewOverlay.hidden = true;
+      if (els.cropBox) els.cropBox.hidden = false;
+      syncCropBoxStyle();
+    }
+
     renderCropCanvas();
     toast("Sesuaikan kembali area pangkas.");
     if (window.matchMedia("(max-width: 991.98px)").matches) {
@@ -787,6 +1233,7 @@
       state.name = file.name.replace(/\.[^.]+$/, "").trim() || "Slab";
       state.cropRotation = 0;
       state.cropBox = { x: 0.04, y: 0.04, w: 0.92, h: 0.92 };
+      toggleCropMode("standard");
 
       // Masuk ke Tahap 2: Crop View
       if (els.uploadView) els.uploadView.hidden = true;
@@ -1051,6 +1498,8 @@
     });
 
     initCropInteractions();
+    initSkewInteractions();
+    els.cropSkewToggleBtn?.addEventListener("click", () => toggleCropMode());
     els.cropRotateBtn?.addEventListener("click", rotateCrop);
     els.cropResetBtn?.addEventListener("click", resetCropBox);
     els.cropChangePhotoBtn?.addEventListener("click", () => els.imageInput.click());
