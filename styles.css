@@ -1043,6 +1043,16 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   .export-controls { width: 100%; justify-content: flex-end; }
 }
 @media (max-width: 991.98px) {
+  html { scroll-padding-top: 76px; }
+  .workspace-main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .scroll-top-btn { bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .crop-toolbar .btn, .crop-footer .btn, .editor-actions .btn,
+  .settings-header .btn, .text-action, .export-controls .btn,
+  .export-controls .form-select, .form-control { min-height: 44px; }
+  .form-control, .export-controls .form-select { font-size: 16px; }
+  .form-check-label { display: inline-flex; align-items: center; min-height: 44px; }
+  .form-switch .form-check-input { margin-top: 12px; }
+  .editor-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .header-sep { display: none; }
   .privacy-text { display: none; }
   .editor-layout {
@@ -1061,27 +1071,45 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
     color: var(--studio-accent); text-decoration: underline; text-underline-offset: 3px;
   }
   .mobile-jump:hover { color: #0047b3; }
-  .settings-jump { margin-top: 12px; }
+  .preview-header .mobile-jump { margin: 0; flex-shrink: 0; }
+  .preview-header { padding-block: 4px; }
 }
 @media (max-width: 650px) {
   .site-width { padding-inline: 14px; }
   .header-content { min-height: 56px; }
   .brand-link strong { font-size: 16px; }
-  .workspace-main { padding-block: 18px 36px; }
+  .workspace-main { padding-top: 16px; }
+  .upload-view { margin: 14px auto 24px; }
+  .upload-hero { text-align: start; }
+  .upload-hero p { margin-bottom: 18px; }
+  .upload-hero-card, .crop-card { padding: 12px; }
+  .crop-view { margin: 0 auto; }
+  .crop-header { gap: 12px; margin-bottom: 12px; }
+  .crop-toolbar {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .crop-toolbar .btn { flex-direction: column; justify-content: center; gap: 4px; padding: 6px 2px; }
+  .crop-stage-container { min-height: 0; padding: 22px; }
+  .crop-footer { display: grid; gap: 8px; margin-top: 12px; }
+  .crop-footer .btn { justify-content: center; }
   .page-intro { align-items: start; margin-bottom: 16px; }
   .page-intro h1 { font-size: clamp(22px, 7vw, 27px); }
   .page-meta { display: none; }
   .page-intro p { font-size: 14px; }
   .editor-layout { gap: 16px; }
-  .editor-top-bar { flex-wrap: wrap; padding: 10px 14px; }
-  .editor-file-details strong { max-width: 180px; }
+  .editor-top-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 12px; }
+  .editor-file-details strong { max-width: 100%; }
+  .editor-actions .btn { flex: 1; justify-content: center; padding-inline: 6px; }
   .photo-card .card-body { padding: 16px; }
   .upload-control { min-height: 120px; padding: 16px 12px; }
   .upload-mark { width: 42px; height: 42px; margin-bottom: 8px; }
   .upload-mark svg { width: 20px; height: 20px; }
-  .upload-text strong { font-size: 13px; }
-  .upload-text span { font-size: 11px; }
-  .upload-badge { font-size: 11px; padding: 4px 12px; margin-top: 6px; }
+  .upload-text strong { font-size: 16px; }
+  .upload-text span { font-size: 13px; }
+  .upload-badge { padding: 8px 16px; margin-top: 8px; }
   .settings-body { display: block; padding: 0 16px 12px; }
   .settings-section:nth-child(2) { border-bottom: 1px solid rgba(60, 60, 67, .08); }
   .settings-header { padding-inline: 16px; }
@@ -1096,13 +1124,24 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; marg
   .canvas-overlay { padding: 12px; }
   .state-content .btn { padding-inline: 16px; }
   .preview-footer { font-size: 11px; flex-wrap: wrap; }
-  .preview-header { padding: 10px 14px; }
+  .preview-header { padding-inline: 14px; }
   .preview-header span { font-size: 11px; text-align: right; }
   .export-toolbar { padding: 14px; }
   .export-controls { flex-direction: column; align-items: stretch; }
   .export-controls .form-select { width: 100%; }
   .export-controls .btn { width: 100%; }
-  .toast-message { bottom: max(16px, env(safe-area-inset-bottom)); }
+  .toast-message { width: max-content; bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+@media (pointer: coarse) {
+  .crop-handle::after {
+    content: "";
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .toast-message { transition: none; }

@@ -16,8 +16,8 @@
     />
     <title>Buat ilustrasi slab lebih mudah hehe</title>
     <link rel="stylesheet" href="./vendor/bootstrap.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=3.1" />
-    <script src="./app.js?v=2.1" defer></script>
+    <link rel="stylesheet" href="./styles.css?v=3.3" />
+    <script src="./app.js?v=2.2" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#studio">Lewati ke editor</a>
@@ -102,7 +102,7 @@
           <div class="crop-header">
             <div class="crop-header-text">
               <h2 id="cropTitle">Pangkas foto slab</h2>
-              <p>
+              <p id="cropHelp">
                 Tarik sudut atau tepi bingkai untuk memotong area di luar slab.
                 Lewati jika foto sudah pas.
               </p>
@@ -177,6 +177,10 @@
             </div>
           </div>
 
+          <label class="perspective-toggle">
+            <input type="checkbox" id="perspectiveMode" aria-describedby="cropHelp" />
+            Luruskan perspektif (4 sudut)
+          </label>
           <div class="crop-stage-container" id="cropStageContainer">
             <div class="crop-stage" id="cropStage">
               <canvas
@@ -184,6 +188,16 @@
                 class="crop-canvas"
                 aria-hidden="true"
               ></canvas>
+              <div id="perspectiveOverlay" hidden>
+                <svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+                  <path fill-rule="evenodd" fill="rgba(10,12,16,.65)" />
+                  <polygon fill="none" stroke="white" stroke-width="2" vector-effect="non-scaling-stroke" />
+                </svg>
+                <button type="button" aria-label="Sudut kiri atas"></button>
+                <button type="button" aria-label="Sudut kanan atas"></button>
+                <button type="button" aria-label="Sudut kanan bawah"></button>
+                <button type="button" aria-label="Sudut kiri bawah"></button>
+              </div>
               <div
                 id="cropBox"
                 class="crop-box"
@@ -352,7 +366,7 @@
 
         <div class="editor-layout">
           <!-- Kolom Pengaturan di Kiri -->
-          <aside class="settings-column" aria-labelledby="settingsTitle">
+          <aside class="settings-column" id="settings" aria-labelledby="settingsTitle">
             <div class="card settings-card">
               <div class="card-header settings-header">
                 <div>
@@ -581,13 +595,15 @@
                 </section>
               </div>
             </div>
+            <a class="mobile-jump" href="#previewTitle">Lihat pratinjau</a>
           </aside>
 
           <!-- Kolom Pratinjau di Kanan -->
-          <section class="preview-column" aria-labelledby="previewTitle">
+          <section class="preview-column" aria-label="Pratinjau slab">
             <div class="card preview-card" id="previewTitle">
               <div class="card-header preview-header">
                 <strong id="previewName">BELUM ADA FOTO</strong>
+                <a class="mobile-jump" href="#settings">Atur slab</a>
               </div>
               <div class="canvas-surface">
                 <canvas
