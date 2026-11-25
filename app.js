@@ -3,7 +3,8 @@
 
   const studioLayouts = {
     "bg-1.png": { width: 1448, floor: 907 / 1086, center: 0.5, maxWidth: 0.8, maxHeight: 734 / 1086 },
-    "bg-2.jpg": { width: 1920, floor: 340 / 360, center: 284 / 640, maxWidth: 1370 / 1448, maxHeight: 240 / 360 },
+    "bg-2-clean.jpg": { width: 1920, floor: 0.93, center: 0.427, maxWidth: 0.74, maxHeight: 0.67, openFloor: true },
+    "bg-3-clean.jpg": { width: 1920, floor: 0.93, center: 0.436, maxWidth: 0.74, maxHeight: 0.62, openFloor: true },
   };
   const stage = document.getElementById("slabCanvas");
   const els = {
@@ -152,9 +153,8 @@
     return Number.isFinite(state.width) && Number.isFinite(state.height);
   }
 
-  function imageCrop() {
+  function imageCrop(target) {
     const original = state.source;
-    const target = slabRatio();
     const available = { ...original };
     if (state.mode === "contain") return available;
     const inputRatio = imageRatio();
@@ -182,6 +182,11 @@
     if (height > maxH) {
       height = maxH;
       width = height * ratio;
+    }
+    if (layout.openFloor && state.mode === "contain") {
+      const fit = Math.min(width / state.source.w, height / state.source.h);
+      width = state.source.w * fit;
+      height = state.source.h * fit;
     }
     const margin = (frame.width - maxW) / 2;
     const x = Math.max(margin, Math.min(frame.width * layout.center - width / 2, frame.width - margin - width));
@@ -245,7 +250,7 @@
     const ctx = layer.getContext("2d");
     ctx.scale(layer.width / bounds.w, layer.height / bounds.h);
     const s = { x: 0, y: 0, w: bounds.w, h: bounds.h };
-    const src = imageCrop();
+    const src = imageCrop(s.w / s.h);
     let w = s.w;
     let h = s.h;
     if (state.mode === "contain") {
@@ -259,7 +264,7 @@
     ctx.save();
     roundedRect(ctx, 0, 0, s.w, s.h, 4);
     ctx.clip();
-    if (state.mode === "contain") {
+    if (state.mode === "contain" && !studioLayouts[state.background].openFloor) {
       ctx.beginPath();
       ctx.rect(0, 0, s.w, s.h);
       ctx.rect(x, y, w, h);
@@ -335,7 +340,7 @@
         option.textContent = `${width * option.value} × ${height * option.value} px`;
       }
       if (state.status === "loading" && !state.rawImage && !els.uploadView.hidden) showVisualState("empty");
-      requestRender();
+      updateStatus();
     } catch {
       if (sequence !== state.backgroundSequence) return;
       els.background.value = state.background;
@@ -399,6 +404,9 @@
 
   function updateStatus() {
     const ratio = slabRatio();
+    const invalidSize = els.width.classList.contains("is-invalid") || els.height.classList.contains("is-invalid");
+    els.sizeHelp.textContent = invalidSize ? "Isi angka antara 10 dan 6000 cm."
+      : "Opsional. Isi jika tahu ukuran asli slab. Jika kosong, pratinjau mengikuti rasio foto.";
     els.ratio.textContent = hasDimensions()
       ? `${ratio.toFixed(3)} : 1`
       : "Belum diisi";
@@ -431,8 +439,7 @@
     }
 
     const inputRatio = imageRatio();
-    const mismatch = hasDimensions() ? Math.abs(inputRatio / ratio - 1) : 0;
-
+    const mismatch = Math.abs(inputRatio / ratio - 1);
     const cropIsHorizontal = inputRatio > ratio;
     els.positionStart.textContent = cropIsHorizontal ? "Kiri" : "Atas";
     els.positionEnd.textContent = cropIsHorizontal ? "Kanan" : "Bawah";
@@ -441,7 +448,7 @@
     els.cropPosition.style.opacity = els.position.disabled ? ".52" : "1";
     if (hasDimensions() && mismatch > 0.015) {
       els.ratioNotice.hidden = false;
-      els.ratioNoticeText.textContent = `Rasio foto (${inputRatio.toFixed(3)}:1) berbeda ${Math.round(mismatch * 100)}% dari ukuran slab. ${state.mode === "cover" ? "Foto akan dipotong pada sisinya, tanpa diregangkan." : "Seluruh foto ditampilkan tanpa stretch, dengan bidang kosong bila perlu."}`;
+      els.ratioNoticeText.textContent = `Rasio foto (${inputRatio.toFixed(3)}:1) berbeda ${Math.round(mismatch * 100)}% dari ukuran slab. ${state.mode === "cover" ? "Foto akan dipotong pada sisinya, tanpa diregangkan." : "Seluruh foto ditampilkan dengan proporsi aslinya."}`;
     } else {
       els.ratioNotice.hidden = true;
     }
@@ -477,10 +484,6 @@
       state[which] = null;
       els[which].classList.remove("is-invalid");
       els[which].removeAttribute("aria-invalid");
-      if (!document.querySelector(".form-control.is-invalid")) {
-        els.sizeHelp.textContent =
-          "Opsional. Isi jika tahu ukuran asli slab. Jika kosong, pratinjau mengikuti rasio foto.";
-      }
       updateStatus();
       return;
     }
@@ -489,7 +492,6 @@
       state[which] = null;
       els[which].classList.add("is-invalid");
       els[which].setAttribute("aria-invalid", "true");
-      els.sizeHelp.textContent = "Isi angka antara 10 dan 6000 cm.";
       updateStatus();
       return;
     }
@@ -497,10 +499,6 @@
     els[which].removeAttribute("aria-invalid");
     state[which] = parsed;
     if (normalize) els[which].value = formatCm(state[which]);
-    if (!document.querySelector(".form-control.is-invalid")) {
-      els.sizeHelp.textContent =
-        "Opsional. Isi jika tahu ukuran asli slab. Jika kosong, pratinjau mengikuti rasio foto.";
-    }
     updateStatus();
   }
 
@@ -1322,8 +1320,6 @@
       input.classList.remove("is-invalid");
       input.removeAttribute("aria-invalid");
     }
-    els.sizeHelp.textContent =
-      "Opsional. Isi jika tahu ukuran asli slab. Jika kosong, pratinjau mengikuti rasio foto.";
   }
 
   function reset() {
