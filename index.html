@@ -16,8 +16,8 @@
     />
     <title>Buat ilustrasi slab lebih mudah hehe</title>
     <link rel="stylesheet" href="./vendor/bootstrap.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=3.4" />
-    <script src="./app.js?v=2.7" defer></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#studio">Lewati ke editor</a>
@@ -103,7 +103,8 @@
             <div class="crop-header-text">
               <h2 id="cropTitle">Pangkas foto slab</h2>
               <p id="cropHelp">
-                Tarik sudut atau tepi untuk memangkas foto. Geser bagian tengah untuk memindahkan bingkai.
+                Tarik sudut atau tepi untuk memangkas foto. Geser bagian tengah
+                untuk memindahkan bingkai.
               </p>
             </div>
             <div class="crop-toolbar">
@@ -212,11 +213,35 @@
                   preserveAspectRatio="none"
                   aria-hidden="true"
                 >
-                  <path id="skewMaskPath" fill-rule="evenodd" fill="rgba(10, 12, 16, 0.65)" />
-                  <line id="skewGridH1" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
-                  <line id="skewGridH2" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
-                  <line id="skewGridV1" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
-                  <line id="skewGridV2" stroke="rgba(255, 255, 255, 0.28)" stroke-width="1" vector-effect="non-scaling-stroke" />
+                  <path
+                    id="skewMaskPath"
+                    fill-rule="evenodd"
+                    fill="rgba(10, 12, 16, 0.65)"
+                  />
+                  <line
+                    id="skewGridH1"
+                    stroke="rgba(255, 255, 255, 0.28)"
+                    stroke-width="1"
+                    vector-effect="non-scaling-stroke"
+                  />
+                  <line
+                    id="skewGridH2"
+                    stroke="rgba(255, 255, 255, 0.28)"
+                    stroke-width="1"
+                    vector-effect="non-scaling-stroke"
+                  />
+                  <line
+                    id="skewGridV1"
+                    stroke="rgba(255, 255, 255, 0.28)"
+                    stroke-width="1"
+                    vector-effect="non-scaling-stroke"
+                  />
+                  <line
+                    id="skewGridV2"
+                    stroke="rgba(255, 255, 255, 0.28)"
+                    stroke-width="1"
+                    vector-effect="non-scaling-stroke"
+                  />
                   <polygon
                     id="skewPolygon"
                     fill="rgba(0, 102, 255, 0.08)"
@@ -261,7 +286,13 @@
                   title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Sudut kiri bawah"
                 ></div>
-                <div class="crop-size-tag" id="skewDimensionsBadge" aria-live="polite">0 × 0 px</div>
+                <div
+                  class="crop-size-tag"
+                  id="skewDimensionsBadge"
+                  aria-live="polite"
+                >
+                  0 × 0 px
+                </div>
               </div>
               <div
                 id="cropBox"
@@ -350,11 +381,18 @@
               </div>
             </div>
 
-            <div id="cropProcessingOverlay" class="crop-processing-overlay" hidden aria-live="polite">
+            <div
+              id="cropProcessingOverlay"
+              class="crop-processing-overlay"
+              hidden
+              aria-live="polite"
+            >
               <div class="crop-processing-card">
                 <div class="crop-spinner" aria-hidden="true"></div>
                 <div class="crop-processing-text">
-                  <strong id="cropProcessingTitle">Meluruskan foto slab...</strong>
+                  <strong id="cropProcessingTitle"
+                    >Meluruskan foto slab...</strong
+                  >
                   <span id="cropProcessingProgress">Memproses piksel (0%)</span>
                 </div>
                 <div class="crop-progress-track" aria-hidden="true">
@@ -456,7 +494,11 @@
 
         <div class="editor-layout">
           <!-- Kolom Pengaturan di Kiri -->
-          <aside class="settings-column" id="settings" aria-labelledby="settingsTitle">
+          <aside
+            class="settings-column"
+            id="settings"
+            aria-labelledby="settingsTitle"
+          >
             <div class="card settings-card">
               <div class="card-header settings-header">
                 <div>
@@ -648,7 +690,9 @@
                     </div>
                   </div>
                   <div class="shadow-toggle-row">
-                    <label class="form-label" for="studioBackground">Latar studio</label>
+                    <label class="form-label" for="studioBackground"
+                      >Latar studio</label
+                    >
                     <select class="form-select mb-3" id="studioBackground">
                       <option value="bg-1.png">Background 1 (Studio)</option>
                       <option value="bg-2.jpg">Background 2 (MKM Bali)</option>
