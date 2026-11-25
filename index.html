@@ -16,8 +16,8 @@
     />
     <title>Buat ilustrasi slab lebih mudah hehe</title>
     <link rel="stylesheet" href="./vendor/bootstrap.min.css" />
-    <link rel="stylesheet" href="./styles.css?v=3.3" />
-    <script src="./app.js?v=2.4" defer></script>
+    <link rel="stylesheet" href="./styles.css?v=3.4" />
+    <script src="./app.js?v=2.7" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#studio">Lewati ke editor</a>
@@ -103,8 +103,7 @@
             <div class="crop-header-text">
               <h2 id="cropTitle">Pangkas foto slab</h2>
               <p id="cropHelp">
-                Tarik sudut atau tepi bingkai untuk memotong area di luar slab.
-                Lewati jika foto sudah pas.
+                Tarik sudut atau tepi untuk memangkas foto. Geser bagian tengah untuk memindahkan bingkai.
               </p>
             </div>
             <div class="crop-toolbar">
@@ -231,7 +230,8 @@
                   class="skew-handle skew-handle-tl"
                   data-corner="tl"
                   tabindex="0"
-                  role="slider"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Sudut kiri atas"
                 ></div>
                 <div
@@ -239,7 +239,8 @@
                   class="skew-handle skew-handle-tr"
                   data-corner="tr"
                   tabindex="0"
-                  role="slider"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Sudut kanan atas"
                 ></div>
                 <div
@@ -247,7 +248,8 @@
                   class="skew-handle skew-handle-br"
                   data-corner="br"
                   tabindex="0"
-                  role="slider"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Sudut kanan bawah"
                 ></div>
                 <div
@@ -255,7 +257,8 @@
                   class="skew-handle skew-handle-bl"
                   data-corner="bl"
                   tabindex="0"
-                  role="slider"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Sudut kiri bawah"
                 ></div>
                 <div class="crop-size-tag" id="skewDimensionsBadge" aria-live="polite">0 × 0 px</div>
@@ -295,21 +298,33 @@
                 <div
                   class="crop-handle handle-nw"
                   data-handle="nw"
+                  tabindex="0"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Tarik sudut kiri atas"
                 ></div>
                 <div
                   class="crop-handle handle-ne"
                   data-handle="ne"
+                  tabindex="0"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Tarik sudut kanan atas"
                 ></div>
                 <div
                   class="crop-handle handle-se"
                   data-handle="se"
+                  tabindex="0"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Tarik sudut kanan bawah"
                 ></div>
                 <div
                   class="crop-handle handle-sw"
                   data-handle="sw"
+                  tabindex="0"
+                  role="group"
+                  title="Panah: 1 piksel. Shift + panah: 10 piksel."
                   aria-label="Tarik sudut kiri bawah"
                 ></div>
                 <div
@@ -633,6 +648,11 @@
                     </div>
                   </div>
                   <div class="shadow-toggle-row">
+                    <label class="form-label" for="studioBackground">Latar studio</label>
+                    <select class="form-select mb-3" id="studioBackground">
+                      <option value="bg-1.png">Background 1 (Studio)</option>
+                      <option value="bg-2.jpg">Background 2 (MKM Bali)</option>
+                    </select>
                     <div class="form-check form-switch mb-3">
                       <input
                         class="form-check-input"

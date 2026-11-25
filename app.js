@@ -1,8 +1,10 @@
 (() => {
   "use strict";
 
-  const W = 1448;
-  const H = 1086;
+  const studioLayouts = {
+    "bg-1.png": { width: 1448, floor: 907 / 1086, center: 0.5, maxWidth: 0.8, maxHeight: 734 / 1086 },
+    "bg-2.jpg": { width: 1920, floor: 340 / 360, center: 284 / 640, maxWidth: 1370 / 1448, maxHeight: 240 / 360 },
+  };
   const stage = document.getElementById("slabCanvas");
   const els = {
     imageInput: document.getElementById("imageInput"),
@@ -73,6 +75,7 @@
     editorFileName: document.getElementById("editorFileName"),
     editorFileMeta: document.getElementById("editorFileMeta"),
     resolution: document.getElementById("resolutionInput"),
+    background: document.getElementById("studioBackground"),
     download: document.getElementById("downloadBtn"),
     toast: document.getElementById("toast"),
   };
@@ -101,6 +104,9 @@
     image: null,
     source: null,
     studio: null,
+    background: "bg-1.png",
+    backgroundSequence: 0,
+    exporting: false,
     userPhotoUrl: null,
     status: "loading",
     pendingRender: false,
@@ -166,8 +172,10 @@
   }
 
   function slabGeometry() {
-    const maxW = 1370;
-    const maxH = 734;
+    const frame = frameSize();
+    const layout = studioLayouts[state.background];
+    const maxW = frame.width * layout.maxWidth;
+    const maxH = frame.height * layout.maxHeight;
     const ratio = slabRatio();
     let width = maxW;
     let height = width / ratio;
@@ -175,7 +183,9 @@
       height = maxH;
       width = height * ratio;
     }
-    return { x: (W - width) / 2, y: 907 - height, w: width, h: height };
+    const margin = (frame.width - maxW) / 2;
+    const x = Math.max(margin, Math.min(frame.width * layout.center - width / 2, frame.width - margin - width));
+    return { x, y: frame.height * layout.floor - height, w: width, h: height };
   }
 
   function roundedRect(ctx, x, y, w, h, r = 4) {
@@ -189,125 +199,74 @@
     ctx.closePath();
   }
 
+  let showroomReflection = null;
+
+  function prepareReflection(image) {
+    const map = document.createElement("canvas");
+    map.width = image.naturalWidth;
+    map.height = image.naturalHeight;
+    const ctx = map.getContext("2d");
+    ctx.drawImage(image, 0, 0);
+    const fade = ctx.createLinearGradient(0, 0, map.width * 0.86, map.height * 0.32);
+    fade.addColorStop(0, "white");
+    fade.addColorStop(0.45, "rgba(255,255,255,0.85)");
+    fade.addColorStop(1, "transparent");
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, 0, map.width, map.height);
+    return map;
+  }
+
   function drawLight(ctx, slab) {
-    if (state.finish === "honed" || state.shine === 0) return;
-    const s = slab;
+    if (!showroomReflection || state.finish === "honed" || state.shine === 0) return;
+    const glossy = state.finish === "glossy";
+    const scale = Math.max(slab.w / showroomReflection.width, slab.h / showroomReflection.height);
+    const w = showroomReflection.width * scale;
+    const h = showroomReflection.height * scale;
+    const x = slab.x - (w - slab.w) * 0.12;
+    const y = slab.y - (h - slab.h) * 0.06;
     const strength = state.shine / 100;
-    const isGlossy = state.finish === "glossy";
-    const amount = (isGlossy ? 1.0 : 0.58) * strength;
 
     ctx.save();
-
-    // Layer 1: Soft ceiling-light wash — very faint linear gradient from top.
-    // Simulates the ambient studio ceiling reflected across the whole face.
-    const topWash = ctx.createLinearGradient(0, s.y, 0, s.y + s.h * 0.55);
-    topWash.addColorStop(0, `rgba(255,255,255,${0.055 * amount})`);
-    topWash.addColorStop(0.5, `rgba(255,255,255,${0.018 * amount})`);
-    topWash.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = topWash;
-    ctx.fillRect(s.x, s.y, s.w, s.h * 0.55);
-
-    // Layer 2: Main specular zone — the characteristic "hot spot" you see in
-    // professional slab photos. It is a soft ellipse sitting in the upper-right
-    // quadrant, as if a studio softbox above-right is being reflected.
-    const spotCX = s.x + s.w * 0.68;
-    const spotCY = s.y + s.h * 0.26;
-    const spotRX = s.w * 0.30;
-    const spotRY = s.h * 0.21;
-
-    ctx.save();
-    ctx.translate(spotCX, spotCY);
-    ctx.scale(spotRX, spotRY);
-    const spot = ctx.createRadialGradient(-0.05, -0.1, 0, 0, 0, 1);
-    spot.addColorStop(0,   `rgba(255,255,255,${0.28 * amount})`);
-    spot.addColorStop(0.3, `rgba(255,255,255,${0.14 * amount})`);
-    spot.addColorStop(0.65,`rgba(255,255,255,${0.04 * amount})`);
-    spot.addColorStop(1,   "rgba(255,255,255,0)");
-    ctx.fillStyle = spot;
-    ctx.beginPath();
-    ctx.arc(0, 0, 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // Layer 3 (Glossy only): sharper bevel specular line along the top edge,
-    // mimicking the chamfer/edge highlight seen on mirror-polished stone.
-    if (isGlossy) {
-      const bevel = ctx.createLinearGradient(s.x, 0, s.x + s.w, 0);
-      bevel.addColorStop(0.0,  `rgba(255,255,255,${0.22 * amount})`);
-      bevel.addColorStop(0.28, `rgba(255,255,255,${0.60 * amount})`);
-      bevel.addColorStop(0.55, `rgba(255,255,255,${0.42 * amount})`);
-      bevel.addColorStop(0.80, `rgba(255,255,255,${0.55 * amount})`);
-      bevel.addColorStop(1.0,  `rgba(255,255,255,${0.18 * amount})`);
-      ctx.strokeStyle = bevel;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(s.x + 4, s.y + 1.5);
-      ctx.lineTo(s.x + s.w - 4, s.y + 1.5);
-      ctx.stroke();
-    }
-
+    // Canvas filters use output pixels, including during high-resolution export.
+    const shortSide = Math.min(slab.w, slab.h) * ctx.getTransform().a;
+    ctx.filter = `blur(${shortSide * (glossy ? 0.0025 : 0.006)}px)`;
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = strength * (glossy ? 0.44 : 0.29);
+    ctx.drawImage(showroomReflection, x, y, w, h);
     ctx.restore();
   }
 
-  function paintSlab(ctx, s) {
-    // Bayangan kontak lembut di dasar tatakan (Ambient Occlusion)
-    if (state.shadow) {
-      ctx.save();
-      const bottom = s.y + s.h;
-      const inset = Math.min(8, s.w * 0.02);
-      // Lapisan 1: bayangan lembut menyebar
-      ctx.filter = "blur(8px)";
-      ctx.fillStyle = "rgba(12, 16, 14, 0.22)";
-      ctx.fillRect(s.x + inset, bottom - 2, s.w - inset * 2, 10);
-      // Lapisan 2: bayangan kontak intim tepat di garis tumpuan
-      ctx.filter = "blur(2px)";
-      ctx.fillStyle = "rgba(10, 14, 12, 0.32)";
-      ctx.fillRect(s.x + inset * 1.5, bottom - 1, s.w - inset * 3, 3);
-      ctx.restore();
+  function paintSlab(scene, bounds) {
+    const scale = scene.getTransform().a;
+    const layer = document.createElement("canvas");
+    layer.width = Math.ceil(bounds.w * scale);
+    layer.height = Math.ceil(bounds.h * scale);
+    const ctx = layer.getContext("2d");
+    ctx.scale(layer.width / bounds.w, layer.height / bounds.h);
+    const s = { x: 0, y: 0, w: bounds.w, h: bounds.h };
+    const src = imageCrop();
+    let w = s.w;
+    let h = s.h;
+    if (state.mode === "contain") {
+      const fit = Math.min(w / src.w, h / src.h);
+      w = src.w * fit;
+      h = src.h * fit;
     }
-
+    const x = (s.w - w) / 2;
+    const y = (s.h - h) / 2;
+    const photo = [state.image, src.x, src.y, src.w, src.h, x, y, w, h];
     ctx.save();
-    roundedRect(ctx, s.x, s.y, s.w, s.h, 4);
+    roundedRect(ctx, 0, 0, s.w, s.h, 4);
     ctx.clip();
-
-    if (state.mode === "cover") {
-      const src = imageCrop();
-      ctx.drawImage(
-        state.image,
-        src.x,
-        src.y,
-        src.w,
-        src.h,
-        s.x,
-        s.y,
-        s.w,
-        s.h,
-      );
-    } else {
-      // Contain preserves all image pixels while maintaining physical slab bounds.
+    if (state.mode === "contain") {
+      ctx.beginPath();
+      ctx.rect(0, 0, s.w, s.h);
+      ctx.rect(x, y, w, h);
       ctx.fillStyle = "#d6dad1";
-      ctx.fillRect(s.x, s.y, s.w, s.h);
-      const source = state.source;
-      const naturalRatio = imageRatio();
-      let drawWidth = s.w;
-      let drawHeight = drawWidth / naturalRatio;
-      if (drawHeight > s.h) {
-        drawHeight = s.h;
-        drawWidth = drawHeight * naturalRatio;
-      }
-      ctx.drawImage(
-        state.image,
-        source.x,
-        source.y,
-        source.w,
-        source.h,
-        s.x + (s.w - drawWidth) / 2,
-        s.y + (s.h - drawHeight) / 2,
-        drawWidth,
-        drawHeight,
-      );
+      ctx.fill("evenodd");
     }
-
+    ctx.drawImage(...photo);
     drawLight(ctx, s);
 
     // Garis bevel fisik di dalam slab (hanya jika outline aktif)
@@ -333,9 +292,62 @@
       roundedRect(ctx, s.x, s.y, s.w, s.h, 4);
       ctx.stroke();
     }
+
+    // Mask surface effects with the photo silhouette before compositing onto the studio.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.globalCompositeOperation = "destination-atop";
+    ctx.drawImage(...photo);
+    ctx.restore();
+
+    if (state.shadow) {
+      const strip = Math.min(layer.height, Math.max(1, Math.round(2 * scale)));
+      scene.save();
+      scene.filter = `brightness(0) blur(${3 * scale}px)`;
+      scene.globalAlpha = 0.25;
+      scene.drawImage(layer, 0, layer.height - strip, layer.width, strip,
+        bounds.x, bounds.y + bounds.h - 1, bounds.w, 5);
+      scene.restore();
+    }
+    scene.drawImage(layer, bounds.x, bounds.y, bounds.w, bounds.h);
+  }
+
+  function frameSize() {
+    const width = studioLayouts[state.background].width;
+    const height = Math.round(width * state.studio.naturalHeight / state.studio.naturalWidth);
+    return { width, height };
+  }
+
+  async function selectBackground(file) {
+    const sequence = ++state.backgroundSequence;
+    els.background.value = file;
+    syncDownloadButton();
+    try {
+      const image = await loadImage("./assets/" + file);
+      if (sequence !== state.backgroundSequence) return;
+      state.studio = image;
+      state.background = file;
+      const { width, height } = frameSize();
+      stage.parentElement.style.aspectRatio = `${width} / ${height}`;
+      for (const option of els.resolution.options) {
+        option.textContent = `${width * option.value} × ${height * option.value} px`;
+      }
+      if (state.status === "loading" && !state.rawImage && !els.uploadView.hidden) showVisualState("empty");
+      requestRender();
+    } catch {
+      if (sequence !== state.backgroundSequence) return;
+      els.background.value = state.background;
+      if (!state.studio) showVisualState("error", "Latar studio gagal dimuat.");
+      toast(`Latar ${file} gagal dimuat.`);
+    } finally {
+      syncDownloadButton();
+    }
   }
 
   function drawFrame(canvas, multiplier = 1) {
+    const { width: W, height: H } = frameSize();
     canvas.width = Math.round(W * multiplier);
     canvas.height = Math.round(H * multiplier);
     const ctx = canvas.getContext("2d", { alpha: false });
@@ -364,13 +376,18 @@
     });
   }
 
+  function syncDownloadButton() {
+    els.download.disabled = state.exporting || state.status !== "ready" ||
+      !state.studio || els.background.value !== state.background;
+  }
+
   function showVisualState(status, message = "") {
     state.status = status;
     if (els.loading) els.loading.hidden = status !== "loading";
     if (els.empty) els.empty.hidden = status !== "empty";
     if (els.error) els.error.hidden = status !== "error";
     if (message && els.errorText) els.errorText.textContent = message;
-    if (els.download) els.download.disabled = status !== "ready";
+    syncDownloadButton();
     if (els.remove) els.remove.hidden = !state.image || status === "loading";
     if (els.exportHint) {
       els.exportHint.textContent =
@@ -614,12 +631,68 @@
 
   let activeCropAction = null;
 
+  function arrowDelta(e) {
+    const dim = getRotatedSourceDimensions();
+    const step = e.shiftKey ? 10 : 1;
+    switch (e.key) {
+      case "ArrowLeft": return { x: -step / dim.w, y: 0 };
+      case "ArrowRight": return { x: step / dim.w, y: 0 };
+      case "ArrowUp": return { x: 0, y: -step / dim.h };
+      case "ArrowDown": return { x: 0, y: step / dim.h };
+      default: return null;
+    }
+  }
+
+  function adjustCropBox(sb, handle, dx, dy, stageW, stageH) {
+    const minW = Math.max(0.04, 24 / stageW);
+    const minH = Math.max(0.04, 24 / stageH);
+
+    if (!handle) {
+      let newX = sb.x + dx;
+      let newY = sb.y + dy;
+      newX = Math.max(0, Math.min(1 - sb.w, newX));
+      newY = Math.max(0, Math.min(1 - sb.h, newY));
+      state.cropBox.x = newX;
+      state.cropBox.y = newY;
+    } else {
+      let x1 = sb.x;
+      let y1 = sb.y;
+      let x2 = sb.x + sb.w;
+      let y2 = sb.y + sb.h;
+
+      if (handle.includes("w")) {
+        x1 = Math.min(sb.x + dx, x2 - minW);
+        x1 = Math.max(0, x1);
+      }
+      if (handle.includes("e")) {
+        x2 = Math.max(sb.x + sb.w + dx, x1 + minW);
+        x2 = Math.min(1, x2);
+      }
+      if (handle.includes("n")) {
+        y1 = Math.min(sb.y + dy, y2 - minH);
+        y1 = Math.max(0, y1);
+      }
+      if (handle.includes("s")) {
+        y2 = Math.max(sb.y + sb.h + dy, y1 + minH);
+        y2 = Math.min(1, y2);
+      }
+
+      state.cropBox = {
+        x: x1,
+        y: y1,
+        w: x2 - x1,
+        h: y2 - y1,
+      };
+    }
+  }
+
   function initCropInteractions() {
     const stage = els.cropStage;
     const box = els.cropBox;
     if (!stage || !box) return;
 
     box.addEventListener("pointerdown", (e) => {
+      if (activeCropAction || e.button !== 0) return;
       const handleEl = e.target.closest(".crop-handle");
       const rect = stage.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
@@ -629,7 +702,7 @@
 
       const handle = handleEl ? handleEl.dataset.handle : null;
       activeCropAction = {
-        type: handle ? "resize" : "move",
+        handleEl,
         handle: handle,
         pointerId: e.pointerId,
         startX: e.clientX,
@@ -639,6 +712,8 @@
         stageH: rect.height,
       };
 
+      (handleEl?.tabIndex === 0 ? handleEl : box).focus({ preventScroll: true });
+      handleEl?.classList.add("active");
       box.setPointerCapture(e.pointerId);
     });
 
@@ -649,48 +724,7 @@
       const dx = (e.clientX - activeCropAction.startX) / activeCropAction.stageW;
       const dy = (e.clientY - activeCropAction.startY) / activeCropAction.stageH;
       const sb = activeCropAction.startBox;
-      const minW = Math.max(0.04, 24 / activeCropAction.stageW);
-      const minH = Math.max(0.04, 24 / activeCropAction.stageH);
-
-      if (activeCropAction.type === "move") {
-        let newX = sb.x + dx;
-        let newY = sb.y + dy;
-        newX = Math.max(0, Math.min(1 - sb.w, newX));
-        newY = Math.max(0, Math.min(1 - sb.h, newY));
-        state.cropBox.x = newX;
-        state.cropBox.y = newY;
-      } else if (activeCropAction.type === "resize") {
-        const h = activeCropAction.handle;
-        let x1 = sb.x;
-        let y1 = sb.y;
-        let x2 = sb.x + sb.w;
-        let y2 = sb.y + sb.h;
-
-        if (h.includes("w")) {
-          x1 = Math.min(sb.x + dx, x2 - minW);
-          x1 = Math.max(0, x1);
-        }
-        if (h.includes("e")) {
-          x2 = Math.max(sb.x + sb.w + dx, x1 + minW);
-          x2 = Math.min(1, x2);
-        }
-        if (h.includes("n")) {
-          y1 = Math.min(sb.y + dy, y2 - minH);
-          y1 = Math.max(0, y1);
-        }
-        if (h.includes("s")) {
-          y2 = Math.max(sb.y + sb.h + dy, y1 + minH);
-          y2 = Math.min(1, y2);
-        }
-
-        state.cropBox = {
-          x: x1,
-          y: y1,
-          w: x2 - x1,
-          h: y2 - y1,
-        };
-      }
-
+      adjustCropBox(sb, activeCropAction.handle, dx, dy, activeCropAction.stageW, activeCropAction.stageH);
       syncCropBoxStyle();
     });
 
@@ -699,33 +733,22 @@
         if (box.hasPointerCapture(e.pointerId)) {
           box.releasePointerCapture(e.pointerId);
         }
+        activeCropAction.handleEl?.classList.remove("active");
         activeCropAction = null;
       }
     };
 
     box.addEventListener("pointerup", stopDrag);
     box.addEventListener("pointercancel", stopDrag);
+    box.addEventListener("lostpointercapture", stopDrag);
 
     box.addEventListener("keydown", (e) => {
-      const step = e.shiftKey ? 0.05 : 0.01;
-      let handled = false;
-      if (e.key === "ArrowLeft") {
-        state.cropBox.x = Math.max(0, state.cropBox.x - step);
-        handled = true;
-      } else if (e.key === "ArrowRight") {
-        state.cropBox.x = Math.min(1 - state.cropBox.w, state.cropBox.x + step);
-        handled = true;
-      } else if (e.key === "ArrowUp") {
-        state.cropBox.y = Math.max(0, state.cropBox.y - step);
-        handled = true;
-      } else if (e.key === "ArrowDown") {
-        state.cropBox.y = Math.min(1 - state.cropBox.h, state.cropBox.y + step);
-        handled = true;
-      }
-      if (handled) {
-        e.preventDefault();
-        syncCropBoxStyle();
-      }
+      const delta = arrowDelta(e);
+      if (!delta) return;
+      e.preventDefault();
+      const rect = stage.getBoundingClientRect();
+      adjustCropBox(state.cropBox, e.target.dataset.handle, delta.x, delta.y, rect.width, rect.height);
+      syncCropBoxStyle();
     });
 
     window.addEventListener("resize", () => {
@@ -738,6 +761,21 @@
 
   let activeSkewAction = null;
 
+  function positionSkewCorner(corner, x, y) {
+    const candidate = { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+    const points = ["tl", "tr", "br", "bl"].map(key => key === corner ? candidate : state.skewPoints[key]);
+    // Preserve clockwise winding at every corner to prevent a folded perspective transform.
+    const convex = points.every((a, index) => {
+      const b = points[(index + 1) % 4];
+      const c = points[(index + 2) % 4];
+      return (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x) > 0.000001;
+    });
+    if (convex) {
+      state.skewPoints[corner] = candidate;
+      syncSkewOverlayStyle();
+    }
+  }
+
   function initSkewInteractions() {
     const stage = els.cropStage;
     const overlay = els.skewOverlay;
@@ -746,7 +784,7 @@
     overlay.querySelectorAll(".skew-handle").forEach((handleEl) => {
       handleEl.addEventListener("pointerdown", (e) => {
         const corner = handleEl.dataset.corner;
-        if (!corner) return;
+        if (!corner || activeSkewAction || e.button !== 0) return;
         const rect = stage.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return;
 
@@ -758,12 +796,14 @@
           corner: corner,
           pointerId: e.pointerId,
           handleEl: handleEl,
-          stageLeft: rect.left,
-          stageTop: rect.top,
+          startPoint: { ...state.skewPoints[corner] },
+          startX: e.clientX,
+          startY: e.clientY,
           stageW: rect.width,
           stageH: rect.height,
         };
 
+        handleEl.focus({ preventScroll: true });
         handleEl.classList.add("active");
         handleEl.setPointerCapture(e.pointerId);
       });
@@ -771,6 +811,7 @@
 
     if (els.skewPolygon) {
       els.skewPolygon.addEventListener("pointerdown", (e) => {
+        if (activeSkewAction || e.button !== 0) return;
         const rect = stage.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return;
 
@@ -797,14 +838,9 @@
       e.preventDefault();
 
       if (activeSkewAction.type === "corner") {
-        const corner = activeSkewAction.corner;
-        let nx = (e.clientX - activeSkewAction.stageLeft) / activeSkewAction.stageW;
-        let ny = (e.clientY - activeSkewAction.stageTop) / activeSkewAction.stageH;
-        nx = Math.max(0, Math.min(1, nx));
-        ny = Math.max(0, Math.min(1, ny));
-
-        state.skewPoints[corner] = { x: nx, y: ny };
-        syncSkewOverlayStyle();
+        const { corner, startPoint, startX, startY, stageW, stageH } = activeSkewAction;
+        positionSkewCorner(corner, startPoint.x + (e.clientX - startX) / stageW,
+          startPoint.y + (e.clientY - startY) / stageH);
       } else if (activeSkewAction.type === "move") {
         const dx = (e.clientX - activeSkewAction.startX) / activeSkewAction.stageW;
         const dy = (e.clientY - activeSkewAction.startY) / activeSkewAction.stageH;
@@ -834,41 +870,28 @@
       if (!activeSkewAction || activeSkewAction.pointerId !== e.pointerId) return;
       if (activeSkewAction.handleEl && activeSkewAction.handleEl.hasPointerCapture(e.pointerId)) {
         activeSkewAction.handleEl.releasePointerCapture(e.pointerId);
-        activeSkewAction.handleEl.classList.remove("active");
       }
       if (activeSkewAction.targetEl && activeSkewAction.targetEl.hasPointerCapture(e.pointerId)) {
         activeSkewAction.targetEl.releasePointerCapture(e.pointerId);
       }
+      activeSkewAction.handleEl?.classList.remove("active");
       activeSkewAction = null;
     };
 
     overlay.addEventListener("pointermove", onPointerMove);
     overlay.addEventListener("pointerup", onPointerUp);
     overlay.addEventListener("pointercancel", onPointerUp);
+    overlay.addEventListener("lostpointercapture", onPointerUp);
 
     overlay.querySelectorAll(".skew-handle").forEach((handleEl) => {
       handleEl.addEventListener("keydown", (e) => {
         const corner = handleEl.dataset.corner;
         if (!corner) return;
-        const step = e.shiftKey ? 0.05 : 0.01;
-        let handled = false;
-        if (e.key === "ArrowLeft") {
-          state.skewPoints[corner].x = Math.max(0, state.skewPoints[corner].x - step);
-          handled = true;
-        } else if (e.key === "ArrowRight") {
-          state.skewPoints[corner].x = Math.min(1, state.skewPoints[corner].x + step);
-          handled = true;
-        } else if (e.key === "ArrowUp") {
-          state.skewPoints[corner].y = Math.max(0, state.skewPoints[corner].y - step);
-          handled = true;
-        } else if (e.key === "ArrowDown") {
-          state.skewPoints[corner].y = Math.min(1, state.skewPoints[corner].y + step);
-          handled = true;
-        }
-        if (handled) {
-          e.preventDefault();
-          syncSkewOverlayStyle();
-        }
+        const delta = arrowDelta(e);
+        if (!delta) return;
+        e.preventDefault();
+        const point = state.skewPoints[corner];
+        positionSkewCorner(corner, point.x + delta.x, point.y + delta.y);
       });
     });
   }
@@ -928,7 +951,7 @@
         els.cropSkewToggleText.textContent = "Mode Skew";
       }
       if (els.cropHelp) {
-        els.cropHelp.textContent = "Tarik sudut atau tepi bingkai untuk memotong area di luar slab. Lewati jika foto sudah pas.";
+        els.cropHelp.textContent = "Tarik sudut atau tepi untuk memangkas foto. Geser bagian tengah untuk memindahkan bingkai.";
       }
 
       syncCropBoxStyle();
@@ -1037,17 +1060,23 @@
           const i11 = i01 + 4;
 
           const dIdx = dstRowOffset + u * 4;
-          outBytes[dIdx]     = (w00 * srcBytes[i00]     + w10 * srcBytes[i10]     + w01 * srcBytes[i01]     + w11 * srcBytes[i11]) | 0;
-          outBytes[dIdx + 1] = (w00 * srcBytes[i00 + 1] + w10 * srcBytes[i10 + 1] + w01 * srcBytes[i01 + 1] + w11 * srcBytes[i11 + 1]) | 0;
-          outBytes[dIdx + 2] = (w00 * srcBytes[i00 + 2] + w10 * srcBytes[i10 + 2] + w01 * srcBytes[i01 + 2] + w11 * srcBytes[i11 + 2]) | 0;
-          outBytes[dIdx + 3] = 255;
+          const a00 = w00 * srcBytes[i00 + 3], a10 = w10 * srcBytes[i10 + 3];
+          const a01 = w01 * srcBytes[i01 + 3], a11 = w11 * srcBytes[i11 + 3];
+          const alpha = a00 + a10 + a01 + a11;
+          if (alpha > 0) {
+            for (let channel = 0; channel < 3; channel++) {
+              outBytes[dIdx + channel] = (a00 * srcBytes[i00 + channel] + a10 * srcBytes[i10 + channel]
+                + a01 * srcBytes[i01 + channel] + a11 * srcBytes[i11 + channel]) / alpha;
+            }
+            outBytes[dIdx + 3] = alpha;
+          }
         } else if (xFloor >= 0 && xFloor < srcW && yFloor >= 0 && yFloor < srcH) {
           const sIdx = (yFloor * srcW + xFloor) * 4;
           const dIdx = dstRowOffset + u * 4;
           outBytes[dIdx]     = srcBytes[sIdx];
           outBytes[dIdx + 1] = srcBytes[sIdx + 1];
           outBytes[dIdx + 2] = srcBytes[sIdx + 2];
-          outBytes[dIdx + 3] = 255;
+          outBytes[dIdx + 3] = srcBytes[sIdx + 3];
         }
       }
     }
@@ -1298,6 +1327,7 @@
   }
 
   function reset() {
+    if (els.background.value !== "bg-1.png") void selectBackground("bg-1.png");
     clearDimensions();
     state.shine = 70;
     state.position = 0;
@@ -1313,14 +1343,16 @@
   }
 
   async function downloadImage() {
-    if (!state.image || !state.studio || state.status !== "ready") return;
-    els.download.disabled = true;
+    if (!state.image || !state.studio || state.status !== "ready" || els.background.value !== state.background) return;
+    state.exporting = true;
+    syncDownloadButton();
     const originalContent = els.download.innerHTML;
     els.download.textContent = "Mengekspor...";
     try {
       const factor = Number(els.resolution.value) || 2;
       const output = document.createElement("canvas");
       drawFrame(output, factor);
+      const { width, height } = output;
       const blob = await new Promise((resolve, reject) => {
         output.toBlob(
           (file) =>
@@ -1347,12 +1379,13 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(objectUrl), 20000);
-      toast(`PNG ${W * factor} × ${H * factor} berhasil dibuat.`);
+      toast(`PNG ${width} × ${height} berhasil dibuat.`);
     } catch (error) {
       console.error(error);
       toast("Gagal mengekspor gambar. Coba resolusi yang lebih rendah.");
     } finally {
-      els.download.disabled = state.status !== "ready";
+      state.exporting = false;
+      syncDownloadButton();
       els.download.innerHTML = originalContent;
     }
   }
@@ -1376,6 +1409,9 @@
   }
 
   function attachEvents() {
+    els.background.addEventListener("change", () => {
+      void selectBackground(els.background.value);
+    });
     const scrollTopBtn = document.getElementById("scrollTopBtn");
     const syncScrollTop = () => {
       scrollTopBtn?.classList.toggle("is-visible", window.scrollY > 320);
@@ -1517,16 +1553,12 @@
     if (els.editorView) els.editorView.hidden = true;
     showVisualState("loading");
     try {
-      state.studio = await loadImage("./assets/studio.png");
-      showVisualState("empty");
-      updateStatus();
-    } catch (error) {
-      showVisualState(
-        "error",
-        "Foto latar studio tidak tersedia. Periksa folder assets lalu muat ulang.",
-      );
-      toast("Studio tidak dapat dimuat.");
+      showroomReflection = prepareReflection(await loadImage("./assets/showroom-reflection.jpg"));
+    } catch {
+      toast("Foto pantulan showroom gagal dimuat.");
     }
+    await selectBackground(els.background.value);
+    updateStatus();
   }
 
   void init();
